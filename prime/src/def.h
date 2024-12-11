@@ -197,7 +197,7 @@
 #define THROTTLE_OUTGOING_MESSAGES 0
 
 /* These values define the maximum outgoing bandwidth of each traffic
- //* class when throttling is used.  The number are in bits per second
+ * class when throttling is used.  The number are in bits per second
  * (e.g., 10000000 means the outgoing bandwidth is not to exceed
  * 10Mbps). Note that in the current release, RECON messages are
  * always throttled, regardless of whether the

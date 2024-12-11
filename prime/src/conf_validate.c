@@ -46,7 +46,6 @@
  * came from the server or site that should have sent them and check to make
  * sure that the lengths are correct. */
 
-#include "spu_alarm.h"
 #include "validate.h"
 #include "data_structs.h"
 #include "order.h"
@@ -58,6 +57,7 @@
 #include "packets.h"
 #include "conf_tc_wrapper.h"
 #include "proactive_recovery.h"
+#include "spu_alarm.h"
 
 extern server_variables   VAR;
 extern server_data_struct DATA;

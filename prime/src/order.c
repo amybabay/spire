@@ -43,8 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "spu_alarm.h"
-#include "spu_memory.h"
 #include "order.h"
 #include "data_structs.h"
 #include "process.h"
@@ -62,6 +60,9 @@
 #include "view_change.h"
 #include "catchup.h"
 #include "proactive_recovery.h"
+
+#include "spu_alarm.h"
+#include "spu_memory.h"
 
 /* Global variables */
 extern server_variables   VAR;

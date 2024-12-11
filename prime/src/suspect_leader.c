@@ -42,13 +42,14 @@
  */
 
 #include <assert.h>
-#include "spu_memory.h"
-#include "spu_alarm.h"
 #include "utility.h"
 #include "signature.h"
 #include "order.h"
 #include "suspect_leader.h"
 #include "view_change.h"
+
+#include "spu_memory.h"
+#include "spu_alarm.h"
 
 #define MAX_TAT_TIME (10000000.0)
 
@@ -238,7 +239,6 @@ void SUSPECT_TAT_Measure_Periodically(int dummy, void *dummyp)
 
 void SUSPECT_Process_TAT_Measure(signed_message *mess)
 {
-    int i;
     double tats[VAR.Num_Servers+1];
     double prev_leader, accept;
     tat_measure_message *measure;
@@ -259,14 +259,9 @@ void SUSPECT_Process_TAT_Measure(signed_message *mess)
     }
     
     qsort((void*)(tats+1), VAR.Num_Servers, sizeof(double), doublecmp);
-    /*
-    for (i = 1; i <= VAR.Num_Servers; i++) {
-	printf("after sort tat[%d]: %f\n",i,tats[i]);
-    }
-    */
+
     prev_leader = DATA.SUSP.tat_leader;
     DATA.SUSP.tat_leader = tats[VAR.F + VAR.K + 1];
-    //printf("New DATA.SUSP.tat_leader=%f\n",DATA.SUSP.tat_leader);
     if (DATA.SUSP.tat_leader > prev_leader) {
         accept = DATA.SUSP.tat_acceptable * VARIABILITY_KLAT;
         if (DATA.VIEW.view_change_done == 1)
@@ -377,7 +372,6 @@ void SUSPECT_Process_RTT_Pong (signed_message *mess)
 
 void SUSPECT_Process_RTT_Measure (signed_message *mess)
 {
-    double delta, t;
     int i;
     rtt_measure_message *measure;
     double prev_alpha, tats[VAR.Num_Servers+1];
@@ -393,10 +387,6 @@ void SUSPECT_Process_RTT_Measure (signed_message *mess)
         return;
     }
 
-    //delta = (double)PRE_PREPARE_SEC + (double)(PRE_PREPARE_USEC)/1000000.0;
-    //t = measure->rtt * VARIABILITY_KLAT + delta;
-
-    //printf("tats_if_leader %f %f %d\n", measure->rtt, t, mess->machine_id);
     if (measure->rtt < DATA.SUSP.tat_if_leader[mess->machine_id]) {
         DATA.SUSP.tat_if_leader[mess->machine_id] = measure->rtt;
 

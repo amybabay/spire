@@ -47,8 +47,8 @@
  * unexpected event occurs (or sometimes expected when under attack). All exits
  * should occur through these functions. */
 
-#include "spu_alarm.h"
 #include "data_structs.h"
+#include "spu_alarm.h"
 
 extern server_variables VAR;
 

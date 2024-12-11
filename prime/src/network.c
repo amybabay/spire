@@ -160,7 +160,6 @@ void Reconfig_Reset_Network(void)
   /* Initialize the receiving scatters */
   srv_recv_scat.num_elements    = 1;
   srv_recv_scat.elements[0].len = sizeof(packet);
-  printf("MS2022:srv_recv_scat element[0] size=%d\n",sizeof(packet));
   srv_recv_scat.elements[0].buf = (char *) new_ref_cnt(PACK_BODY_OBJ);
   if(srv_recv_scat.elements[0].buf == NULL)
     Alarm(EXIT, "Init_Network: Cannot allocate packet object\n");
@@ -251,7 +250,6 @@ void Init_Network(void)
   /* Initialize the receiving scatters */
   srv_recv_scat.num_elements    = 1;
   srv_recv_scat.elements[0].len = sizeof(packet);
-  printf("MS2022:srv_recv_scat element[0] size=%d\n",sizeof(packet));
   srv_recv_scat.elements[0].buf = (char *) new_ref_cnt(PACK_BODY_OBJ);
   if(srv_recv_scat.elements[0].buf == NULL)
     Alarm(EXIT, "Init_Network: Cannot allocate packet object\n");

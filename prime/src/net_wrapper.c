@@ -44,7 +44,9 @@
 #include <unistd.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include "net_wrapper.h"
+#include "network.h"
 #include "spu_alarm.h"
 #include "spines_lib.h"
 

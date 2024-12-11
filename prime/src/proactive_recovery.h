@@ -86,4 +86,6 @@ void PR_Process_Reset_ViewChange(signed_message *mess);
 void PR_Process_Reset_NewView(signed_message *mess);
 void PR_Process_Reset_Certificate(signed_message *mess);
 
+void PR_Clear_Reset_Data_Structures(void);
+
 #endif /* PRIME_PROACTIVE_RECOVERY_H */
