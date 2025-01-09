@@ -253,12 +253,10 @@ void SUSPECT_Process_TAT_Measure(signed_message *mess)
     if (measure->max_tat > DATA.SUSP.reported_tats[mess->machine_id]) {
         DATA.SUSP.reported_tats[mess->machine_id] = measure->max_tat;
     }
-    /*
+
     for (i = 1; i <= VAR.Num_Servers; i++) {
         tats[i] = DATA.SUSP.reported_tats[i];
-	printf("before sort tat[%d]: %f\n",i,tats[i]);
     }
-    */
     
     qsort((void*)(tats+1), VAR.Num_Servers, sizeof(double), doublecmp);
     /*
