@@ -135,7 +135,7 @@
  * 254.255.0.X to send to all replicas reliably */
 #define SPINES_MCAST_ADDR      "254.255.0.20"
 #define CONF_SPINES_MCAST_ADDR "224.1.1.3"
-#define CONF_MNGR_ADDR "192.168.53.73"
+#define CONF_MNGR_ADDR "192.168.101.108"
 #define CONFIGUATION_SPINES_PORT       8900
 #define CONF_SPINES_MCAST_PORT 9900
 #define CTRL_BASE_PORT      9580

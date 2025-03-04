@@ -623,7 +623,7 @@ To run this example, execute the following:
 
 - On control center 1 machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8100 -c spines_int.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd scada_master; ./scada_master 1 1 192.168.101.101:8100 192.168.101.101:8120
@@ -632,52 +632,52 @@ To run this example, execute the following:
 
 - On control center 2 machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8100 -c spines_int.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd scada_master; ./scada_master 2 2 192.168.101.102:8100 192.168.101.102:8120
         cd prime/bin; ./prime -i 2 -g 2
-        cd prime/bin;./config_agent 2 192.168.101.102 /tmp/sm_ipc_main s 2 2
+        cd prime/bin;./config_agent 2 192.168.101.102 /tmp/sm_ipc_main s 1 2
 
 - On control center 3 machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8100 -c spines_int.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd scada_master; ./scada_master 3 3 192.168.101.103:8100 192.168.101.103:8120
         cd prime/bin; ./prime -i 3 -g 3
-        cd prime/bin;./config_agent 3 192.168.101.103 /tmp/sm_ipc_main s 3 3
+        cd prime/bin;./config_agent 3 192.168.101.103 /tmp/sm_ipc_main s 1 3
 
 - On control center 4 machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8100 -c spines_int.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd scada_master; ./scada_master 4 4 192.168.101.104:8100 192.168.101.104:8120
         cd prime/bin; ./prime -i 4 -g 4
-        cd prime/bin;./config_agent 4 192.168.101.104 s 4 4
+        cd prime/bin;./config_agent 4 192.168.101.104 /tmp/sm_ipc_main s 1 4
 
 - On control center 5 machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8100 -c spines_int.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd scada_master; ./scada_master 5 5 192.168.101.105:8100 192.168.101.105:8120
         cd prime/bin; ./prime -i 5 -g 5
-        cd prime/bin;./config_agent 5 192.168.101.105 /tmp/sm_ipc_main s 5 5
+        cd prime/bin;./config_agent 5 192.168.101.105 /tmp/sm_ipc_main s 1 5
 
 - On control center 6 machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8100 -c spines_int.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd scada_master; ./scada_master 6 6 192.168.101.106:8100 192.168.101.106:8120
         cd prime/bin; ./prime -i 6 -g 6
-        cd prime/bin;./config_agent 6 192.168.101.106 /tmp/sm_ipc_main s 6 6
+        cd prime/bin;./config_agent 6 192.168.101.106 /tmp/sm_ipc_main s 1 6
 
 - On the PLC/RTU proxy machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd proxy; ./proxy 0 192.168.101.107:8120 1
         ...
@@ -698,7 +698,7 @@ To run this example, execute the following:
 
 - On the HMI machine:
 
-        cd spines/daemon; ./spines -p 8900 -c spines_config.conf
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
         cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
         cd jhu_hmi; ./jhu_hmi 192.168.101.108:8120 -port=5051
         cd pnnl_hmi; ./pnnl_hmi 192.168.101.108:8120 -port=5052
