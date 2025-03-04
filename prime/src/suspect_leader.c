@@ -239,6 +239,7 @@ void SUSPECT_TAT_Measure_Periodically(int dummy, void *dummyp)
 
 void SUSPECT_Process_TAT_Measure(signed_message *mess)
 {
+    int i;
     double tats[VAR.Num_Servers+1];
     double prev_leader, accept;
     tat_measure_message *measure;
