@@ -5,6 +5,7 @@ Version 4.1  - March 4, 2025
 		- Added missing sanity check on PO Ack parts to ignore acks for PO
 		  Requests that I never sent.
 		- Thanks to Aren Alyahya for the testing that revealed these bugs!
+	* Cleaned up some compiler warnings
 	* Updated outdated buildtools scripts (needed for ARM support)
 	* Updated to use Spines 5.7 (see Spines CHANGELOG)
 
