@@ -715,6 +715,13 @@ To run this example, execute the following:
 	(4 replicas), `conf_3+3+3+3` (12 replicas divided across 4 sites) and `conf_6+6+6` 
         (18 relicas across 3 sites). See `example_conf/README.txt` for details.
 
+- To perform a simple benchmark, instead of running PLCs/RTUs and HMIs as
+  described above, you can run on the PLC/RTU proxy machine:
+
+        cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf
+        cd spines/daemon; ./spines -p 8120 -c spines_ext.conf
+        cd benchmark; ./benchmark 1 192.168.101.107:8120 1000000 500
+
 - To perform reconfiguration, you can use the Configuration Manager with the
   following commands on the HMI Machine (from prime/bin directory):
 
@@ -736,3 +743,13 @@ To run this example, execute the following:
     `prime/bin` directory. Note that the IPs, Ports and ID in
     `new_conf.txt` file of these directories need to be modified to match the
     testbed.
+
+    A simpler example of reconfiguration within a single site is also
+    available. If you run the example `conf_6` as the initial configuration, as
+    described above, you can reconfigure to the (less resilient) `conf_4`:
+
+        cd prime/bin;./config_manager conf_4
+
+    To return to the original `conf_6`, you can do:
+
+        cd prime/bin;./config_manager conf_6_v2
