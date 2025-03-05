@@ -1,6 +1,6 @@
 # Spire: Intrusion-Tolerant SCADA for the Power grid
 
-For more information, see [www.dsn.jhu.edu/spire/ ](https://www.dsn.jhu.edu/spire/)
+For more information, see [https://jhu-dsn.github.io/spire/](https://jhu-dsn.github.io/spire/)
 
 ---
 
@@ -40,8 +40,8 @@ Spire consists of three components: **Spire** and **Confidential Spire** for
 intrusion-tolerant SCADA at the control-center level, and **Spire for the
 Substation** at the substation level.
 
-Note that Spire at control center level can work with Spire for the Subsatation
-providing end-to-end resilience.
+Note that Spire at the control center level can work with Spire for the
+Substation providing end-to-end resilience.
 
 ### Spire
         
@@ -155,8 +155,9 @@ Spire for the Substation: `README_Spire_Substation.md`
 
 ## 5. Version Notes
 
-Spire 3.0 Beta for the first time provided end-to-end intrusion-tolerance
-capabilities at all levels of the power grid.
+Spire 3.0 introduces end-to-end intrusion-tolerance capabilities across both
+the control center and substation levels. This integrated architecture is
+described in Sahiti Bommareddy's PhD thesis.
 
 Spire 2.1 adds reconfiguration support to Spire.
 
@@ -174,7 +175,7 @@ described in the paper "Toward Intrusion Tolerance as a Service:
 Confidentiality in Partially Cloud-Based BFT Systems" published at [IEEE DSN
 2021](https://ieeexplore.ieee.org/document/9505127).
 
-Spire 1.3 updates Spire 1.2 to use OpenSSL 1.1.0. Additionally, an Machine
+Spire 1.3 updates Spire 1.2 to use OpenSSL 1.1.0. Additionally, a Machine
 Learning-based Network Intrusion Detection Module is added to Spire.
 
 Spire 1.2  updates Spire 1.1 to use Spines 5.4, fixing a bug in Spines that

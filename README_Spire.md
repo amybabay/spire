@@ -36,11 +36,11 @@ is protected using the [Spines intrusion-tolerant
 network](http://www.spines.org). The Spire PLC/RTU proxy can interact with any
 devices that use the Modbus or DNP3 communication protocols over IP and with
 substations that use IEC61850. We use [OpenPLC](http://www.openplcproject.com/)
-to emulate PLCs. Additionally, there is also an standalone Machine
+to emulate PLCs. Additionally, there is also a standalone Machine
 Learning-based Network Intrusion Detection System that is built to work with
 Spire.
 
-Spire supports six different example SCADA systems:
+Spire supports several example SCADA systems:
 
 - `jhu`: an example system we created to represent a power distribution system
   with 10 substations, each monitored and controlled by a different PLC or RTU
@@ -57,9 +57,9 @@ Spire supports six different example SCADA systems:
 - `ems`: a system modeling an Energy Management System (EMS) that controls
   several different types of generators with different ramp-up rates and
   renewable energy sources that can be connected to the grid or deactivated
-- 'cc_hmi': an example of end-to-end integrated system that can simultaneously
-  support pnnl plcs and three substaions. The three subsations will be running
-  Spire for the Substation at substation level.
+- `cc_hmi`: an example of an end-to-end integrated system that can simultaneously
+  support pnnl PLCs and three substations. The three substations will be running
+  Spire for the Substation at the substation level.
 
 Spire's SCADA Master can support all of these systems; we provide a separate
 HMI for each system. Note that because the `cc_hmi`, `pnnl` and `heco` systems use the
@@ -174,10 +174,10 @@ There are several configuration files relevant to the Spire system:
    documentation for details. Note that internal and external Spines networks
    may use different configuration files.
 
-5. Subsation configuration: `common/ss<id>.conf`
-   - The files are configuration files for susbations (needed for integrated
-     scenario with cc_hmi and also for Spire for the Substation). They have
-     four relay addresses, a breaker address and subsation HMI address. 
+5. Substation configuration: `common/ss<id>.conf`
+   - These files are configuration files for substations (needed for integrated
+     scenario with `cc_hmi` and also for Spire for the Substation). They have
+     four relay addresses, a breaker address, and substation HMI address. 
    
 ---
 
@@ -266,9 +266,9 @@ below to build Spire.
 
         make
 
-3. If running integrated scenario with cc_hmi, we need to compile Spire for the Substaion code too with:
-	
-	make substation
+3. If the running integrated scenario with the `cc_hmi`, we need to compile Spire for the Substation with:
+
+        make substation
 
 
 ### Building for Performance Benchmarks
@@ -396,15 +396,20 @@ generated before the system can run.
       crypto public key.
 
 4. Trip Master Keys 
-   For Peer Protocol of Spire for the Subsation:
-	cd trip_master;./gen_keys
-    - The keys generated are stored in tm_keys directory
+    - For Peer Protocol of Spire for the Substation:
+
+        cd trip_master; ./gen_keys
+
+    - The keys generated are stored in the `tm_keys` directory
     - Each Trip Master should have access to its share and public key
 
-   For Arbiter Protocol of Spire for the Substation
-	cd trip_master_v2;./gen_keys
-    - The keys generated are stored in tm_keys directory
+    - For Arbiter Protocol of Spire for the Substation
+
+        cd trip_master_v2; ./gen_keys
+
+    - The keys generated are stored in the `tm_keys` directory
     - Each Trip Master should have access to its private key and all public keys
+
 ---
 
 ## Running
@@ -486,7 +491,7 @@ parameters in `common/def.h`
 
 4. Run PLC/RTU proxies
 
-   4.1 To run all PLC/RTUs other than substations (for pnnl, heco and ems scenarios):
+   To run all PLC/RTUs other than substations (for pnnl, heco and ems scenarios):
 
         cd proxy; ./proxy id SPINES_RTU_ADDR:SPINES_EXT_PORT 1
 
@@ -494,8 +499,8 @@ parameters in `common/def.h`
    `NUM_RTU - 1`. This ID is also used to look up information about the PLC/RTU
    in the `config.json` file.
 
-   4.2 To run three substations with Spire for the Subsation system needed by
-	integrated scenario (cc_hmi): Please refer to `README_Spire_Substation.md`
+   To run three substations with Spire for the Substation for the integrated
+   scenario (`cc_hmi`): Please refer to `README_Spire_Substation.md`
 
 5. Run the HMIs
 
@@ -510,10 +515,10 @@ parameters in `common/def.h`
    To run `ems`:
 
         cd hmis/ems_hmi; ./ems_hmi SPINES_HMI_ADDR:SPINES_EXT_PORT -port=pv_port_ems
-   
+
    To run `cc_hmi`:
 
-        cd hmis/cc_hmi; ./cc_hmi SPINES_HMI_ADDR:SPINES_EXT_PORT -port=pv_port_ems
+        cd hmis/cc_hmi; ./cc_hmi SPINES_HMI_ADDR:SPINES_EXT_PORT -port=pv_port_cc
 
    `pv_port_*` is the port on which the HMI will accept pvbrowser connections
    to interface with the GUI that reflects the current power grid state and
