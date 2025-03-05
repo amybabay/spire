@@ -50,14 +50,17 @@
 include ../Makefile.general
 base_dir = ..
 
-TARGET=gen_event goose_publisher 
-INC= -I ../common $(IEC_INC) $(SPREADUTIL_INC)
+TARGET=emulated_mu goose_publisher 
+INC= -I ../common $(IEC_INC) $(SPREADUTIL_INC) $(SPINES_INC) $(TC_INC) 
 
-all: gen_event goose_publisher  
+EMU_OBJ=emulated_mu.o \
+	../common/net_wrapper.o 
+
+all: emulated_mu goose_publisher  
 
 
-gen_event:	gen_event.o
-	$(CC) $(LDFLAGS) -o gen_event gen_event.o $(SPREADUTIL_LIB)
+emulated_mu:	$(EMU_OBJ)
+	$(CC) $(LDFLAGS) -o emulated_mu $(EMU_OBJ) $(IEC_LIB) $(SPINES_LIB) $(SPREADUTIL_LIB) $(TC_LIB)
 
 goose_publisher:	goose_publisher.o 
 	$(CC) $(LDFLAGS) -o goose_publisher goose_publisher.o $(IEC_LIB) $(SPREADUTIL_LIB)
