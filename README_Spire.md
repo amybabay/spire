@@ -1,6 +1,6 @@
 # Spire: Intrusion-Tolerant SCADA for the Power grid
 
-For more information see [www.dsn.jhu.edu/spire/](http://www.dsn.jhu.edu/spire/)
+For more information, see [https://jhu-dsn.github.io/spire/](https://jhu-dsn.github.io/spire/)
 
 Note: Please note that this is README for the standard Spire at control center
 level only. See `README_Confidential_Spire.md` for information on running the
@@ -398,14 +398,14 @@ generated before the system can run.
 4. Trip Master Keys 
     - For Peer Protocol of Spire for the Substation:
 
-        cd trip_master; ./gen_keys
+            cd trip_master; ./gen_keys
 
     - The keys generated are stored in the `tm_keys` directory
     - Each Trip Master should have access to its share and public key
 
     - For Arbiter Protocol of Spire for the Substation
 
-        cd trip_master_v2; ./gen_keys
+            cd trip_master_v2; ./gen_keys
 
     - The keys generated are stored in the `tm_keys` directory
     - Each Trip Master should have access to its private key and all public keys
