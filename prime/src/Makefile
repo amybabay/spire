@@ -78,7 +78,7 @@ CM_OBJ=config_manager.o parser.o key_generation.o data_structs.o utility.o netwo
         reliable_broadcast.o view_change.o catchup.o proactive_recovery.o \
         merkle.o recon.o tc_wrapper.o $(WRAPPER_OBJ)
 
-CA_OBJ=config_agent.o data_structs.o utility.o network.o pre_order.o \
+CA_OBJ=config_agent.o key_generation.o parser.o data_structs.o utility.o network.o pre_order.o \
         util_dll.o packets.o nm_process.o process.o order.o \
         signature.o net_wrapper.o erasure.o validate.o suspect_leader.o \
         reliable_broadcast.o view_change.o catchup.o proactive_recovery.o \
@@ -118,7 +118,7 @@ config_manager:  $(CM_OBJ)
 	 $(CC) $(LDFLAGS) -o ../bin/config_manager $(CM_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
 
 config_agent:  $(CA_OBJ)
-	 $(CC) $(LDFLAGS) -o ../bin/config_agent $(CA_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt
+	 $(CC) $(LDFLAGS) -o ../bin/config_agent $(CA_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
 
 config_disseminator: $(CD_OBJ)
 	 $(CC) $(LDFLAGS) -o ../bin/config_disseminator $(CD_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt

@@ -44,6 +44,9 @@
  *
  */
 
+#define _GNU_SOURCE
+#define __USE_MISC
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

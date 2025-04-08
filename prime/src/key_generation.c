@@ -11,10 +11,6 @@
 #include <stdlib.h>
 
 
-
-
-/* ---------- Internal Helpers ---------- */
-
 char *hex_encode(const unsigned char *data, size_t len)
 {
     char *hex = malloc(len * 2 + 1);
@@ -28,6 +24,26 @@ char *hex_encode(const unsigned char *data, size_t len)
     hex[len * 2] = '\0';
     return hex;
 }
+
+unsigned char *hex_decode(const char *hexstr, size_t *out_len)
+{
+    if (!hexstr || strlen(hexstr) % 2 != 0)
+        return NULL;
+
+    size_t len = strlen(hexstr) / 2;
+    unsigned char *out = malloc(len);
+    if (!out)
+        return NULL;
+
+    for (size_t i = 0; i < len; i++)
+    {
+        sscanf(hexstr + 2 * i, "%2hhx", &out[i]);
+    }
+
+    *out_len = len;
+    return out;
+}
+
 
 static char *write_key_to_pem(EVP_PKEY *pkey, int is_public, const char *passphrase)
 {
@@ -429,24 +445,6 @@ unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
 }
 
 // Hex decode function
-unsigned char *hex_decode(const char *hexstr, size_t *out_len)
-{
-    if (!hexstr || strlen(hexstr) % 2 != 0)
-        return NULL;
-
-    size_t len = strlen(hexstr) / 2;
-    unsigned char *out = malloc(len);
-    if (!out)
-        return NULL;
-
-    for (size_t i = 0; i < len; i++)
-    {
-        sscanf(hexstr + 2 * i, "%2hhx", &out[i]);
-    }
-
-    *out_len = len;
-    return out;
-}
 
 // Hybrid encryption function
 struct HybridEncrypted hybrid_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *rsa_pubkey)
