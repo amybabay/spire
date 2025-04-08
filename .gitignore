@@ -292,3 +292,5 @@ trip_master/tm_keys
 
 prime/bin/tc_keys/*
 prime/bin/tpm_keys
+
+.vscode
