@@ -5,7 +5,6 @@ networks:
       config:
         - subnet: 192.168.101.0/24
           gateway: 192.168.101.1
-    name: spire-net
 
 services:
   spire1:
@@ -16,7 +15,11 @@ services:
         ipv4_address: 192.168.101.101
     cap_add:
       - NET_ADMIN
-    command: python run_replica.py -id 1
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    environment:
+      - SPIRE_MODE=replica
+      - SPIRE_ID=1
 
   spire2:
     image: spire-img
@@ -26,7 +29,11 @@ services:
         ipv4_address: 192.168.101.102
     cap_add:
       - NET_ADMIN
-    command: python run_replica.py -id 2
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    environment:
+      - SPIRE_MODE=replica
+      - SPIRE_ID=2
 
   spire3:
     image: spire-img
@@ -36,7 +43,11 @@ services:
         ipv4_address: 192.168.101.103
     cap_add:
       - NET_ADMIN
-    command: python run_replica.py -id 3
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    environment:
+      - SPIRE_MODE=replica
+      - SPIRE_ID=3
 
   spire4:
     image: spire-img
@@ -46,7 +57,11 @@ services:
         ipv4_address: 192.168.101.104
     cap_add:
       - NET_ADMIN
-    command: python run_replica.py -id 4
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    environment:
+      - SPIRE_MODE=replica
+      - SPIRE_ID=4
 
   client:
     image: spire-img
@@ -56,5 +71,7 @@ services:
         ipv4_address: 192.168.101.107
     cap_add:
       - NET_ADMIN
-    command: python run_client.py
-
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    environment:
+      - SPIRE_MODE=client
