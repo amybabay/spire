@@ -8,7 +8,7 @@ def main():
 
     # Paths to config and executables
     spines_dir = "spines/daemon"
-    config_agent_path = "./bin/config_receiver"
+    config_agent_path = "spire/prime/bin/config_agent"
 
     # Launch Spines internal daemon
     spines_cmd = f"cd {spines_dir} && ./spines -p 8100 -c spines_int.conf -I {local_ip}"
