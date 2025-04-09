@@ -1,0 +1,60 @@
+networks:
+  spire-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.101.0/24
+          gateway: 192.168.101.1
+    name: spire-net
+
+services:
+  spire1:
+    image: spire-img
+    container_name: spire1
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.101
+    cap_add:
+      - NET_ADMIN
+    command: python run_replica.py -id 1
+
+  spire2:
+    image: spire-img
+    container_name: spire2
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.102
+    cap_add:
+      - NET_ADMIN
+    command: python run_replica.py -id 2
+
+  spire3:
+    image: spire-img
+    container_name: spire3
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.103
+    cap_add:
+      - NET_ADMIN
+    command: python run_replica.py -id 3
+
+  spire4:
+    image: spire-img
+    container_name: spire4
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.104
+    cap_add:
+      - NET_ADMIN
+    command: python run_replica.py -id 4
+
+  client:
+    image: spire-img
+    container_name: spire-client
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.107
+    cap_add:
+      - NET_ADMIN
+    command: python run_client.py
+
