@@ -1,0 +1,32 @@
+version: '3.9'
+
+networks:
+  spire-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.101.0/24
+          gateway: 192.168.101.1
+
+services:
+  config-agent:
+    image: spire-img
+    container_name: config-agent
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.201
+    cap_add:
+      - NET_ADMIN
+    command: bash -c "cd /app/spire && ./bin/config_receiver"
+
+  config-disseminator:
+    image: spire-img
+    container_name: config-disseminator
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.202
+    cap_add:
+      - NET_ADMIN
+    tty: true    
+    stdin_open: true
+    command: bash
