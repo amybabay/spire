@@ -16,6 +16,7 @@
 #include "spines_lib.h"
 #include "parser.h"
 #include "key_generation.h"
+#include "config_manager.h"
 
 // Fragmentation and message size constants
 #define MAX_FRAGMENT_SIZE (MAX_SPINES_CLIENT_MSG - 12)
@@ -151,63 +152,77 @@ static void Handle_Conf_Message(int s, int source, void *dummy) {
 
 static void Assemble_Config(void)
 {
-    // compute the total message length
+    // Reassemble message
     size_t total_len = 0;
     for (int i = 0; i < expected_fragments; i++) {
         total_len += fragment_lens[i];
     }
 
-    // allocate a buffer to hold config
-    char *assembled = malloc(total_len + 1);
+    char *assembled = malloc(total_len);
     size_t offset = 0;
-
-    // copy each fragment into buffer
     for (int i = 0; i < expected_fragments; i++) {
         memcpy(assembled + offset, fragment_data[i], fragment_lens[i]);
         offset += fragment_lens[i];
         free(fragment_data[i]);
     }
-    assembled[total_len] = '\0';
     free(fragment_data);
     free(fragment_lens);
 
-    Alarm(PRINT, "Receiver: Assembled config size = %lu bytes\n", total_len);
-
-    // validate message contains at least a signature length field
+    // Parse signature length and signature
     if (total_len < sizeof(uint32_t)) {
-        Alarm(PRINT, "Receiver: Total size too small to contain signature length\n");
+        Alarm(PRINT, "Receiver: Message too short\n");
         free(assembled);
         return;
     }
 
-    // Read the 4-byte signature length
-    uint32_t sig_len = 0;
+    uint32_t sig_len;
     memcpy(&sig_len, assembled, sizeof(uint32_t));
-    // Ensure there is enough data for the signature and the YAML config
+
     if (total_len < sizeof(uint32_t) + sig_len) {
-        Alarm(PRINT, "Receiver: Signature length invalid or incomplete message\n");
+        Alarm(PRINT, "Receiver: Signature too short\n");
         free(assembled);
         return;
     }
 
-    // Pointers to the signature and the YAML data
-    unsigned char *raw_sig = (unsigned char *)(assembled + sizeof(uint32_t));
-    char *yaml_data = (char *)(raw_sig + sig_len);
-    size_t yaml_len = total_len - sizeof(uint32_t) - sig_len;
+    unsigned char *signature = (unsigned char *)(assembled + sizeof(uint32_t));
+    char *yaml_data = (char *)(assembled + sizeof(uint32_t) + sig_len);
+    size_t yaml_len = total_len - (sizeof(uint32_t) + sig_len);
 
-    // Load public key to verify the signature
-    EVP_PKEY *cm_pub_key = load_key_from_file("cm_keys/public_key.pem", 0);
-    if (!cm_pub_key) {
-        Alarm(PRINT, "Receiver: Failed to load public key\n");
+    // Verify the signature using cm_keys/public_key.pem
+    EVP_PKEY *pubkey = load_key_from_file("cm_keys/public_key.pem", 0);
+    if (!pubkey) {
+        Alarm(PRINT, "Receiver: Failed to load CM public key\n");
         free(assembled);
         return;
     }
 
-    // Verify the signature against the YAML data
-    int valid = verify_buffer((unsigned char *)yaml_data, yaml_len, raw_sig, sig_len, cm_pub_key);
+    int valid = verify_buffer((unsigned char *)yaml_data, yaml_len, signature, sig_len, pubkey);
     Alarm(PRINT, "Receiver: Signature is %s\n", valid == 0 ? "VALID" : "INVALID");
+    EVP_PKEY_free(pubkey);
 
-    // cleanup
-    free(raw_sig);
+    if (valid != 0) {
+        free(assembled);
+        return;
+    }
+
+    // Parse YAML into config
+    struct config *cfg = load_yaml_config_from_string(yaml_data, yaml_len);
+    if (!cfg) {
+        Alarm(PRINT, "Receiver: Failed to parse YAML config\n");
+        free(assembled);
+        return;
+    }
+
+    Alarm(PRINT, "Receiver: Parsed config ID = %u\n", cfg->configuration_id);
+    
+    // decrypt all encrypted private/threshold keys
+    // ?? Should all of them be decrypted? or just this hosts?
+    decrypt_all_private_keys(cfg);
+
+    // by now we should have verified the config, parsed it, and decrypted all encrypted private keys.
+
+    // Clean up
+    free_yaml_config(&cfg);
     free(assembled);
 }
+

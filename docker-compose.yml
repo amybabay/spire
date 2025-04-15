@@ -62,16 +62,3 @@ services:
     environment:
       - SPIRE_MODE=replica
       - SPIRE_ID=4
-
-  client:
-    image: spire-img
-    container_name: spire-client
-    networks:
-      spire-net:
-        ipv4_address: 192.168.101.107
-    cap_add:
-      - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-    environment:
-      - SPIRE_MODE=client

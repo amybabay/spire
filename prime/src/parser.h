@@ -24,6 +24,10 @@ struct host
     const char *encrypted_spines_internal_private_key;
     const char *spines_external_public_key;
     const char *encrypted_spines_external_private_key;
+
+    // For use after decryption
+    char *unencrypted_spines_internal_private_key;
+    char *unencrypted_spines_external_private_key;
 };
 
 struct replica
@@ -38,6 +42,11 @@ struct replica
     const char *encrypted_instance_private_key;
     char *encrypted_prime_threshold_key_share;
     char *encrypted_sm_threshold_key_share;
+
+    // For use after decryption
+    char *unencrypted_instance_private_key;
+    char *unencrypted_prime_threshold_key_share;
+    char *unencrypted_sm_threshold_key_share;
 };
 
 struct site

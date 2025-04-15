@@ -1,4 +1,4 @@
-version: '3.9'
+version: '3.8'
 
 networks:
   spire-net:
@@ -6,29 +6,50 @@ networks:
     ipam:
       config:
         - subnet: 192.168.101.0/24
-          gateway: 192.168.101.1
 
 services:
-  conf-agent:
-    image: spire-img
-    container_name: conf-agent
+  replica1:
+    build: .
+    container_name: replica1
+    environment:
+      - SPIRE_MODE=replica
+      - SPIRE_ID=1
     networks:
       spire-net:
-        ipv4_address: 192.168.101.201
+        ipv4_address: 192.168.101.101
     cap_add:
       - NET_ADMIN
+
+  replica2:
+    build: .
+    container_name: replica2
+    environment:
+      - SPIRE_MODE=replica
+      - SPIRE_ID=2
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.102
+    cap_add:
+      - NET_ADMIN
+
+  conf_agent:
+    build: .
+    container_name: conf_agent
     environment:
       - SPIRE_MODE=conf_agent
-
-  conf-manager:
-    image: spire-img
-    container_name: conf-manager
     networks:
       spire-net:
-        ipv4_address: 192.168.101.202
+        ipv4_address: 192.168.101.103  # must match a valid host ID in spines_int.conf
     cap_add:
       - NET_ADMIN
+
+  conf_manager:
+    build: .
+    container_name: conf_manager
     environment:
       - SPIRE_MODE=conf_manager
-    tty: true
-    stdin_open: true
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.104  # must match a valid host ID in spines_int.conf
+    cap_add:
+      - NET_ADMIN

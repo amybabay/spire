@@ -71,8 +71,8 @@ static const cyaml_schema_value_t site_schema = {
  */
 
 static const cyaml_schema_field_t service_keys_schema_fields[] = {
-    CYAML_FIELD_STRING_PTR("sm_threshold_public_key", CYAML_FLAG_POINTER, struct service_keys, sm_threshold_public_key, 0, CYAML_UNLIMITED),
-    CYAML_FIELD_STRING_PTR("prime_threshold_public_key", CYAML_FLAG_POINTER, struct service_keys, prime_threshold_public_key, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("sm_threshold_public_key", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct service_keys, sm_threshold_public_key, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("prime_threshold_public_key", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct service_keys, prime_threshold_public_key, 0, CYAML_UNLIMITED),
     CYAML_FIELD_END};
 
 /**
@@ -83,7 +83,7 @@ static const cyaml_schema_field_t config_schema_fields[] = {
     CYAML_FIELD_UINT("configuration_id", CYAML_FLAG_DEFAULT, struct config, configuration_id),
     CYAML_FIELD_UINT("tolerated_byzantine_faults", CYAML_FLAG_DEFAULT, struct config, tolerated_byzantine_faults),
     CYAML_FIELD_UINT("tolerated_unavailable_replicas", CYAML_FLAG_DEFAULT, struct config, tolerated_unavailable_replicas),
-    CYAML_FIELD_MAPPING("service_keys", CYAML_FLAG_DEFAULT, struct config, service_keys, service_keys_schema_fields),
+    CYAML_FIELD_MAPPING("service_keys", CYAML_FLAG_DEFAULT | CYAML_FLAG_OPTIONAL, struct config, service_keys, service_keys_schema_fields),
     CYAML_FIELD_SEQUENCE_COUNT("sites", CYAML_FLAG_POINTER, struct config, sites, sites_count, &site_schema, 0, CYAML_UNLIMITED),
     CYAML_FIELD_END};
 

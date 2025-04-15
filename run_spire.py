@@ -27,23 +27,6 @@ def run_client():
     sp_proc = subprocess.Popen(spines_ext_cmd, shell=True)
     sp_proc.communicate()
 
-def run_conf_agent():
-    print("Starting Config Agent...")
-    spines_cmd = "cd /app/spire/spines/daemon && ./spines -p 8100 -c spines_int.conf -I 192.168.101.201"
-    agent_cmd = "cd /app/spire && ./bin/config_receiver"
-
-    sp_proc = subprocess.Popen(spines_cmd, shell=True)
-    subprocess.Popen(agent_cmd, shell=True)
-
-    sp_proc.communicate()
-
-def run_conf_manager():
-    print("Starting Config Manager...")
-    spines_cmd = "cd /app/spire/spines/daemon && ./spines -p 8100 -c spines_int.conf -I 192.168.101.202"
-
-    sp_proc = subprocess.Popen(spines_cmd, shell=True)
-    sp_proc.communicate()
-
 if __name__ == "__main__":
     run_check_keys()
 

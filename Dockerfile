@@ -24,10 +24,13 @@ RUN git clone https://github.com/tlsa/libcyaml.git /tmp/libcyaml && \
     make && make install && \
     ldconfig
 
+RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
+
 # Build Spire core (Spines, Prime, SCADA Master, benchmark)
 RUN make core
 
 # Run the script to check and generate keys if needed
-RUN python3 /app/spire/run_spire.py
+COPY run_spire.py /app/spire/run_spire.py
 
-#ENTRYPOINT /bin/bash
+ENTRYPOINT ["python3", "/app/spire/run_spire.py"]
+

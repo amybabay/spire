@@ -13,6 +13,19 @@
 #define SM_TC_DIR "tc_keys/sm/"
 #define PRIME_TC_DIR "tc_keys/prime/"
 
+// Helper to ensure a directory exists
+void ensure_directory(const char *path)
+{
+    struct stat st = {0};
+    if (stat(path, &st) == -1)
+    {
+        if (mkdir(path, 0755) < 0)
+        {
+            perror(path);
+        }
+    }
+}
+
 // Helper to read the share files from TC_with_args_generate
 char *read_file_as_string(const char *filepath)
 {
@@ -100,18 +113,7 @@ void generate_simulated_tpm_key_for_host(struct host *host)
 
 /* Second pass: Generate all keys using the permanent public key */
 
-// Helper to ensure a directory exists
-void ensure_directory(const char *path)
-{
-    struct stat st = {0};
-    if (stat(path, &st) == -1)
-    {
-        if (mkdir(path, 0755) < 0)
-        {
-            perror(path);
-        }
-    }
-}
+
 // Generate SM threshold key shares in tc_keys/sm/
 void generate_sm_tc_keys(int req_shares, int faults, int rej_servers)
 {
@@ -382,213 +384,196 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
     return (*priv_key && *pub_key) ? 0 : -1;
 }
 
-// big ugly functino for demonstration
-void read_and_verify_config_file(const char *filepath, const char *signature_log_path, const char *decrypted_keys_path, EVP_PKEY *verifier_key, EVP_PKEY *unused_tpm_private_key)
+void decrypt_all_private_keys(struct config *cfg)
 {
-    FILE *fp = fopen(filepath, "rb");
-    if (!fp)
-    {
-        perror("Failed to open input file");
-        return;
-    }
-
-    // Read signature length
-    uint32_t sig_len = 0;
-    if (fread(&sig_len, sizeof(uint32_t), 1, fp) != 1)
-    {
-        fprintf(stderr, "Failed to read signature length\n");
-        fclose(fp);
-        return;
-    }
-
-    // Read signature
-    unsigned char *signature = malloc(sig_len);
-    if (!signature || fread(signature, 1, sig_len, fp) != sig_len)
-    {
-        fprintf(stderr, "Failed to read signature\n");
-        free(signature);
-        fclose(fp);
-        return;
-    }
-
-    // Read YAML content
-    fseek(fp, 0, SEEK_END);
-    long total_size = ftell(fp);
-    fseek(fp, sizeof(uint32_t) + sig_len, SEEK_SET);
-
-    long yaml_len = total_size - (sizeof(uint32_t) + sig_len);
-    char *yaml_data = malloc(yaml_len + 1);
-    if (!yaml_data || fread(yaml_data, 1, yaml_len, fp) != yaml_len)
-    {
-        fprintf(stderr, "Failed to read YAML content\n");
-        free(signature);
-        free(yaml_data);
-        fclose(fp);
-        return;
-    }
-    yaml_data[yaml_len] = '\0';
-    fclose(fp);
-
-    // Open output log files
-    FILE *sig_log = fopen(signature_log_path, "w");
-    FILE *dec_log = fopen(decrypted_keys_path, "w");
-    if (!sig_log || !dec_log)
-    {
-        perror("Failed to open output log files");
-        free(signature);
-        free(yaml_data);
-        return;
-    }
-
-    // Print signature validation result and YAML
-    fprintf(sig_log, "YAML Configuration:\n%s\n\n", yaml_data);
-    int valid = verify_buffer((unsigned char *)yaml_data, yaml_len, signature, sig_len, verifier_key);
-    fprintf(sig_log, "Signature is %s.\n", valid == 0 ? "VALID" : "INVALID");
-
-    // Attempt to load the config structure from YAML
-    struct config *cfg = load_yaml_config_from_string(yaml_data, yaml_len);
-    if (!cfg)
-    {
-        fprintf(stderr, "Failed to parse YAML into config structure\n");
-        fclose(sig_log);
-        fclose(dec_log);
-        free(signature);
-        free(yaml_data);
-        return;
-    }
-
-    // Print decrypted keys from all hosts
-    for (unsigned i = 0; i < cfg->sites_count; i++)
-    {
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
         struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->hosts_count; j++)
-        {
-            struct host *host = &site->hosts[j];
-            fprintf(dec_log, "Host: %s\n", host->name);
 
-            EVP_PKEY *tpm_privkey = load_key_from_file(host->permanent_key_location, 1);
-            if (!tpm_privkey)
-            {
-                fprintf(dec_log, "Failed to load TPM private key for host %s\n\n", host->name);
+        for (unsigned j = 0; j < site->hosts_count; j++) {
+            struct host *host = &site->hosts[j];
+
+            EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
+            if (!tpm_priv) {
+                fprintf(stderr, "Host %s: Failed to load TPM private key\n", host->name);
                 continue;
             }
 
             char *enc_key_hex = NULL, *ciphertext_hex = NULL;
+
+            // Internal private key
             hybrid_unpack(host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult int_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_privkey);
-            if (int_dec.plaintext)
-                fprintf(dec_log, "Decrypted Internal Private Key:\n%s\n\n", int_dec.plaintext);
-            else
-                fprintf(dec_log, "Failed to decrypt internal private key for host %s\n\n", host->name);
-
+            struct HybridDecryptionResult int_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            host->unencrypted_spines_internal_private_key = int_dec.plaintext; // assign
             free(enc_key_hex);
             free(ciphertext_hex);
-            free(int_dec.plaintext);
 
+            // External private key
             hybrid_unpack(host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult ext_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_privkey);
-            if (ext_dec.plaintext)
-                fprintf(dec_log, "Decrypted External Private Key:\n%s\n\n", ext_dec.plaintext);
-            else
-                fprintf(dec_log, "Failed to decrypt external private key for host %s\n\n", host->name);
-
+            struct HybridDecryptionResult ext_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            host->unencrypted_spines_external_private_key = ext_dec.plaintext; // assign
             free(enc_key_hex);
             free(ciphertext_hex);
-            free(ext_dec.plaintext);
 
-            EVP_PKEY_free(tpm_privkey);
+            EVP_PKEY_free(tpm_priv);
+        }
+
+        for (unsigned j = 0; j < site->replicas_count; j++) {
+            struct replica *rep = &site->replicas[j];
+
+            struct host *host = find_host_for_replica(site, rep->host);
+            if (!host || !host->permanent_key_location) {
+                fprintf(stderr, "Replica %d: No matching host with TPM key\n", rep->instance_id);
+                continue;
+            }
+
+            EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
+            if (!tpm_priv) {
+                fprintf(stderr, "Replica %d: Failed to load TPM private key\n", rep->instance_id);
+                continue;
+            }
+
+            char *enc_key_hex = NULL, *ciphertext_hex = NULL;
+
+            // Instance private key
+            hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult inst_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            rep->unencrypted_instance_private_key = inst_dec.plaintext;
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            // Prime share
+            hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult prime_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            rep->unencrypted_prime_threshold_key_share = prime_dec.plaintext;
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            // SM share
+            hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult sm_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            rep->unencrypted_sm_threshold_key_share = sm_dec.plaintext;
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            EVP_PKEY_free(tpm_priv);
+        }
+    }
+}
+
+void debug_print_full_config(struct config *cfg) {
+    decrypt_all_private_keys(cfg);
+
+    printf("=== CONFIG ID: %u ===\n", cfg->configuration_id);
+    printf("Tolerated Faults: %u\n", cfg->tolerated_byzantine_faults);
+    printf("Tolerated Unavailable Replicas: %u\n", cfg->tolerated_unavailable_replicas);
+    printf("SM Threshold Public Key:\n%s\n", cfg->service_keys.sm_threshold_public_key);
+    printf("Prime Threshold Public Key:\n%s\n", cfg->service_keys.prime_threshold_public_key);
+
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
+        struct site *site = &cfg->sites[i];
+        printf("\n--- Site: %s ---\n", site->name);
+
+        for (unsigned j = 0; j < site->hosts_count; j++) {
+            struct host *host = &site->hosts[j];
+            printf("  [Host: %s]\n", host->name);
+            printf("    IP: %s\n", host->ip);
+            printf("    Permanent Key Location: %s\n", host->permanent_key_location);
+            printf("    Public TPM Key:\n%s\n", host->permanent_public_key);
+            printf("    Encrypted Internal Private Key: %s...\n", host->encrypted_spines_internal_private_key ? "[present]" : "[missing]");
+            printf("    Decrypted Internal Private Key:\n%s\n", host->unencrypted_spines_internal_private_key ? host->unencrypted_spines_internal_private_key : "[null]");
+            printf("    Encrypted External Private Key: %s...\n", host->encrypted_spines_external_private_key ? "[present]" : "[missing]");
+            printf("    Decrypted External Private Key:\n%s\n", host->unencrypted_spines_external_private_key ? host->unencrypted_spines_external_private_key : "[null]");
+        }
+
+        for (unsigned j = 0; j < site->replicas_count; j++) {
+            struct replica *rep = &site->replicas[j];
+            printf("  [Replica %u on %s]\n", rep->instance_id, rep->host);
+            printf("    Internal Daemon: %s\n", rep->spines_internal_daemon);
+            printf("    External Daemon: %s\n", rep->spines_external_daemon);
+            printf("    Public Key:\n%s\n", rep->instance_public_key);
+            printf("    Encrypted Private Key: %s...\n", rep->encrypted_instance_private_key ? "[present]" : "[missing]");
+            printf("    Decrypted Private Key:\n%s\n", rep->unencrypted_instance_private_key ? rep->unencrypted_instance_private_key : "[null]");
+            printf("    Encrypted Prime Share: %s...\n", rep->encrypted_prime_threshold_key_share ? "[present]" : "[missing]");
+            printf("    Decrypted Prime Share:\n%s\n", rep->unencrypted_prime_threshold_key_share ? rep->unencrypted_prime_threshold_key_share : "[null]");
+            printf("    Encrypted SM Share: %s...\n", rep->encrypted_sm_threshold_key_share ? "[present]" : "[missing]");
+            printf("    Decrypted SM Share:\n%s\n", rep->unencrypted_sm_threshold_key_share ? rep->unencrypted_sm_threshold_key_share : "[null]");
         }
     }
 
-    // Cleanup
-    free(signature);
-    free(yaml_data);
-    free_yaml_config(&cfg);
-    fclose(sig_log);
-    fclose(dec_log);
+    printf("\n=== END CONFIG ===\n");
 }
+
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
-    {
+    if (argc != 3) {
         fprintf(stderr, "Usage: %s <input_yaml> <output_yaml>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    struct config *cfg = load_and_process_config(argv[1]);
-    if (!cfg)
-    {
-        fprintf(stderr, "Failed to load or process config\n");
-        return EXIT_FAILURE;
-    }
-
+    struct config *cfg = NULL;
     EVP_PKEY *cm_priv = NULL, *cm_pub = NULL;
-    if (load_config_manager_keys(&cm_priv, &cm_pub) < 0)
-    {
+    char *serialized_config = NULL;
+    Signature sig = {0};
+    FILE *out_fp = NULL;
+    int status = EXIT_SUCCESS;
+
+    // Load and process YAML config
+    cfg = load_and_process_config(argv[1]);
+    if (!cfg) {
+        fprintf(stderr, "Failed to load or process config\n");
+        status = EXIT_FAILURE;
+        goto out;
+    }
+
+    //  unencrypts keys then pritns teh whole config 
+    debug_print_full_config(cfg);
+
+    // Load CM keys
+    if (load_config_manager_keys(&cm_priv, &cm_pub) < 0) {
         fprintf(stderr, "Failed to load config manager keys\n");
-        free_yaml_config(&cfg);
-        return EXIT_FAILURE;
+        status = EXIT_FAILURE;
+        goto out;
     }
 
-    size_t payload_len = 0;
-
+    // Serialize YAML
     size_t serialized_config_len = 0;
-
-    char *serialized_config = serialize_yaml_config_to_string(cfg, &serialized_config_len);
-    if (!serialized_config)
-    {
+    serialized_config = serialize_yaml_config_to_string(cfg, &serialized_config_len);
+    if (!serialized_config) {
         fprintf(stderr, "Failed to serialize config\n");
-        free_yaml_config(&cfg);
-        EVP_PKEY_free(cm_priv);
-        EVP_PKEY_free(cm_pub);
-        return EXIT_FAILURE;
+        status = EXIT_FAILURE;
+        goto out;
     }
 
-    Signature sig = sign_buffer((unsigned char *)serialized_config, serialized_config_len, cm_priv);
-    if (!sig.signature)
-    {
+    // Sign serialized config
+    sig = sign_buffer((unsigned char *)serialized_config, serialized_config_len, cm_priv);
+    if (!sig.signature) {
         fprintf(stderr, "Failed to sign configuration\n");
-        free(serialized_config);
-        free_yaml_config(&cfg);
-        EVP_PKEY_free(cm_priv);
-        EVP_PKEY_free(cm_pub);
-        return EXIT_FAILURE;
+        status = EXIT_FAILURE;
+        goto out;
     }
 
-    // Write signature + config to output file
-    FILE *out_fp = fopen(argv[2], "wb");
-    if (!out_fp)
-    {
+    // Write output file
+    out_fp = fopen(argv[2], "wb");
+    if (!out_fp) {
         perror("Failed to open output file");
-        free(serialized_config);
-        free_signature(&sig);
-        free_yaml_config(&cfg);
-        EVP_PKEY_free(cm_priv);
-        EVP_PKEY_free(cm_pub);
-        return EXIT_FAILURE;
+        status = EXIT_FAILURE;
+        goto out;
     }
 
-    // Signature length
     uint32_t sig_len_u32 = (uint32_t)sig.length;
     fwrite(&sig_len_u32, sizeof(uint32_t), 1, out_fp);
-
-    // Signature bytes
     fwrite(sig.signature, 1, sig.length, out_fp);
-
-    // Config YAML string
     fwrite(serialized_config, 1, serialized_config_len, out_fp);
 
-    fclose(out_fp);
-
-    read_and_verify_config_file(argv[2], "signature_log.txt", "decrypted_keys.txt", cm_pub, cm_priv);
-
-    // Cleanup
-    free(serialized_config);
+out:
+    if (out_fp) fclose(out_fp);
+    if (cfg) free_yaml_config(&cfg);
+    if (serialized_config) free(serialized_config);
     free_signature(&sig);
-    free_yaml_config(&cfg);
-    EVP_PKEY_free(cm_priv);
-    EVP_PKEY_free(cm_pub);
+    if (cm_priv) EVP_PKEY_free(cm_priv);
+    if (cm_pub) EVP_PKEY_free(cm_pub);
 
-    return EXIT_SUCCESS;
+    return status;
 }
+
