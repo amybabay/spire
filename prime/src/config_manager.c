@@ -113,7 +113,6 @@ void generate_simulated_tpm_key_for_host(struct host *host)
 
 /* Second pass: Generate all keys using the permanent public key */
 
-
 // Generate SM threshold key shares in tc_keys/sm/
 void generate_sm_tc_keys(int req_shares, int faults, int rej_servers)
 {
@@ -386,14 +385,17 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
 
 void decrypt_all_private_keys(struct config *cfg)
 {
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
 
-        for (unsigned j = 0; j < site->hosts_count; j++) {
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
             struct host *host = &site->hosts[j];
 
             EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
-            if (!tpm_priv) {
+            if (!tpm_priv)
+            {
                 fprintf(stderr, "Host %s: Failed to load TPM private key\n", host->name);
                 continue;
             }
@@ -417,17 +419,20 @@ void decrypt_all_private_keys(struct config *cfg)
             EVP_PKEY_free(tpm_priv);
         }
 
-        for (unsigned j = 0; j < site->replicas_count; j++) {
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
             struct replica *rep = &site->replicas[j];
 
             struct host *host = find_host_for_replica(site, rep->host);
-            if (!host || !host->permanent_key_location) {
+            if (!host || !host->permanent_key_location)
+            {
                 fprintf(stderr, "Replica %d: No matching host with TPM key\n", rep->instance_id);
                 continue;
             }
 
             EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
-            if (!tpm_priv) {
+            if (!tpm_priv)
+            {
                 fprintf(stderr, "Replica %d: Failed to load TPM private key\n", rep->instance_id);
                 continue;
             }
@@ -460,7 +465,8 @@ void decrypt_all_private_keys(struct config *cfg)
     }
 }
 
-void debug_print_full_config(struct config *cfg) {
+void debug_print_full_config(struct config *cfg)
+{
     decrypt_all_private_keys(cfg);
 
     printf("=== CONFIG ID: %u ===\n", cfg->configuration_id);
@@ -469,11 +475,13 @@ void debug_print_full_config(struct config *cfg) {
     printf("SM Threshold Public Key:\n%s\n", cfg->service_keys.sm_threshold_public_key);
     printf("Prime Threshold Public Key:\n%s\n", cfg->service_keys.prime_threshold_public_key);
 
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
         printf("\n--- Site: %s ---\n", site->name);
 
-        for (unsigned j = 0; j < site->hosts_count; j++) {
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
             struct host *host = &site->hosts[j];
             printf("  [Host: %s]\n", host->name);
             printf("    IP: %s\n", host->ip);
@@ -485,7 +493,8 @@ void debug_print_full_config(struct config *cfg) {
             printf("    Decrypted External Private Key:\n%s\n", host->unencrypted_spines_external_private_key ? host->unencrypted_spines_external_private_key : "[null]");
         }
 
-        for (unsigned j = 0; j < site->replicas_count; j++) {
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
             struct replica *rep = &site->replicas[j];
             printf("  [Replica %u on %s]\n", rep->instance_id, rep->host);
             printf("    Internal Daemon: %s\n", rep->spines_internal_daemon);
@@ -503,10 +512,145 @@ void debug_print_full_config(struct config *cfg) {
     printf("\n=== END CONFIG ===\n");
 }
 
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
+// #include <stdbool.h>
+// #include "parser.h"
+
+// #define MAX_DAEMONS 256
+// #define BASE_CONFIG_FILE "base_spines.conf"
+// #define SPINES_INT_FILE "spines_int.conf"
+// #define SPINES_EXT_FILE "spines_ext.conf"
+
+// typedef struct {
+//     const char *ip;
+//     unsigned id;
+// } DaemonEntry;
+
+// static bool ip_in_list(const char *ip, DaemonEntry *list, size_t count) {
+//     for (size_t i = 0; i < count; i++) {
+//         if (strcmp(list[i].ip, ip) == 0)
+//             return true;
+//     }
+//     return false;
+// }
+
+// static void append_daemon(DaemonEntry *list, size_t *count, const char *ip) {
+//     if (!ip_in_list(ip, list, *count)) {
+//         list[*count].ip = ip;
+//         list[*count].id = (unsigned)(*count + 1);
+//         (*count)++;
+//     }
+// }
+
+// static void write_topology_file(const char *output_path, DaemonEntry *hosts, size_t host_count, FILE *base_fp) {
+//     FILE *out = fopen(output_path, "w");
+//     if (!out) {
+//         perror("Failed to open output file");
+//         return;
+//     }
+
+//     // Copy base config to output
+//     fseek(base_fp, 0, SEEK_SET);
+//     char line[1024];
+//     while (fgets(line, sizeof(line), base_fp)) {
+//         fputs(line, out);
+//     }
+
+//     // Write Hosts section
+//     fprintf(out, "\nHosts {\n");
+//     for (size_t i = 0; i < host_count; i++) {
+//         fprintf(out, "    %u %s\n", hosts[i].id, hosts[i].ip);
+//     }
+//     fprintf(out, "}\n\n");
+
+//     // Write full mesh Edges section
+//     fprintf(out, "Edges {\n");
+//     for (size_t i = 0; i < host_count; i++) {
+//         for (size_t j = i + 1; j < host_count; j++) {
+//             fprintf(out, "    %u %u 100\n", hosts[i].id, hosts[j].id);
+//         }
+//     }
+//     fprintf(out, "}\n");
+
+//     fclose(out);
+// }
+
+// void generate_spines_topologies(const struct config *cfg) {
+//     DaemonEntry internal_daemons[MAX_DAEMONS];
+//     DaemonEntry external_replicas[MAX_DAEMONS];
+//     DaemonEntry external_clients[MAX_DAEMONS];
+//     size_t internal_count = 0, replica_ext_count = 0, client_ext_count = 0;
+
+//     for (unsigned i = 0; i < cfg->sites_count; i++) {
+//         struct site *site = &cfg->sites[i];
+
+//         // Hosts
+//         for (unsigned j = 0; j < site->hosts_count; j++) {
+//             struct host *h = &site->hosts[j];
+//             if (h->runs_spines_internal)
+//                 append_daemon(internal_daemons, &internal_count, h->ip);
+//             if (h->runs_spines_external && site->type == CLIENT)
+//                 append_daemon(external_clients, &client_ext_count, h->ip);
+//         }
+
+//         // Replicas
+//         for (unsigned j = 0; j < site->replicas_count; j++) {
+//             struct replica *r = &site->replicas[j];
+//             struct host *replica_host = find_host_for_replica(site, r->host);
+//             if (replica_host && replica_host->ip)
+//                 append_daemon(external_replicas, &replica_ext_count, replica_host->ip);
+//         }
+//     }
+
+//     // Internal Topology
+//     FILE *base_fp = fopen(BASE_CONFIG_FILE, "r");
+//     if (!base_fp) {
+//         perror("Failed to open base config file");
+//         return;
+//     }
+//     write_topology_file(SPINES_INT_FILE, internal_daemons, internal_count, base_fp);
+
+//     // External Topology (replica + client edges)
+//     FILE *out = fopen(SPINES_EXT_FILE, "w");
+//     if (!out) {
+//         perror("Failed to open spines_ext.conf");
+//         fclose(base_fp);
+//         return;
+//     }
+
+//     fseek(base_fp, 0, SEEK_SET);
+//     char line[1024];
+//     while (fgets(line, sizeof(line), base_fp)) {
+//         fputs(line, out);
+//     }
+//     fclose(base_fp);
+
+//     fprintf(out, "\nHosts {\n");
+//     for (size_t i = 0; i < replica_ext_count; i++)
+//         fprintf(out, "    %u %s\n", i + 1, external_replicas[i].ip);
+//     for (size_t i = 0; i < client_ext_count; i++)
+//         fprintf(out, "    %u %s\n", (unsigned)(replica_ext_count + i + 1), external_clients[i].ip);
+//     fprintf(out, "}\n\n");
+
+//     fprintf(out, "Edges {\n");
+//     for (size_t i = 0; i < replica_ext_count; i++) {
+//         for (size_t j = i + 1; j < replica_ext_count; j++) {
+//             fprintf(out, "    %u %u 100\n", i + 1, j + 1);
+//         }
+//         for (size_t j = 0; j < client_ext_count; j++) {
+//             fprintf(out, "    %u %u 100\n", i + 1, (unsigned)(replica_ext_count + j + 1));
+//         }
+//     }
+//     fprintf(out, "}\n");
+//     fclose(out);
+// }
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3) {
+    if (argc != 3)
+    {
         fprintf(stderr, "Usage: %s <input_yaml> <output_yaml>\n", argv[0]);
         return EXIT_FAILURE;
     }
@@ -520,17 +664,22 @@ int main(int argc, char *argv[])
 
     // Load and process YAML config
     cfg = load_and_process_config(argv[1]);
-    if (!cfg) {
+    if (!cfg)
+    {
         fprintf(stderr, "Failed to load or process config\n");
         status = EXIT_FAILURE;
         goto out;
     }
 
-    //  unencrypts keys then pritns teh whole config 
-    debug_print_full_config(cfg);
+    // plopped this function in here just to test it.
+    // generate_spines_topologies(cfg);
+
+    //  unencrypts keys then pritns teh whole config
+    // debug_print_full_config(cfg);
 
     // Load CM keys
-    if (load_config_manager_keys(&cm_priv, &cm_pub) < 0) {
+    if (load_config_manager_keys(&cm_priv, &cm_pub) < 0)
+    {
         fprintf(stderr, "Failed to load config manager keys\n");
         status = EXIT_FAILURE;
         goto out;
@@ -539,7 +688,8 @@ int main(int argc, char *argv[])
     // Serialize YAML
     size_t serialized_config_len = 0;
     serialized_config = serialize_yaml_config_to_string(cfg, &serialized_config_len);
-    if (!serialized_config) {
+    if (!serialized_config)
+    {
         fprintf(stderr, "Failed to serialize config\n");
         status = EXIT_FAILURE;
         goto out;
@@ -547,7 +697,8 @@ int main(int argc, char *argv[])
 
     // Sign serialized config
     sig = sign_buffer((unsigned char *)serialized_config, serialized_config_len, cm_priv);
-    if (!sig.signature) {
+    if (!sig.signature)
+    {
         fprintf(stderr, "Failed to sign configuration\n");
         status = EXIT_FAILURE;
         goto out;
@@ -555,7 +706,8 @@ int main(int argc, char *argv[])
 
     // Write output file
     out_fp = fopen(argv[2], "wb");
-    if (!out_fp) {
+    if (!out_fp)
+    {
         perror("Failed to open output file");
         status = EXIT_FAILURE;
         goto out;
@@ -567,13 +719,17 @@ int main(int argc, char *argv[])
     fwrite(serialized_config, 1, serialized_config_len, out_fp);
 
 out:
-    if (out_fp) fclose(out_fp);
-    if (cfg) free_yaml_config(&cfg);
-    if (serialized_config) free(serialized_config);
+    if (out_fp)
+        fclose(out_fp);
+    if (cfg)
+        free_yaml_config(&cfg);
+    if (serialized_config)
+        free(serialized_config);
     free_signature(&sig);
-    if (cm_priv) EVP_PKEY_free(cm_priv);
-    if (cm_pub) EVP_PKEY_free(cm_pub);
+    if (cm_priv)
+        EVP_PKEY_free(cm_priv);
+    if (cm_pub)
+        EVP_PKEY_free(cm_pub);
 
     return status;
 }
-
