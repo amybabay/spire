@@ -17,7 +17,6 @@
 #include "spines_lib.h"
 #include "parser.h"
 #include "key_generation.h"
-#include "config_manager.h"
 
 #define MAX_DAEMONS 256
 #define BASE_SPINES_CONFIG "base_spines.conf"
@@ -425,7 +424,7 @@ static void Assemble_Config(void)
     // ?? Should all of them be decrypted? or just this hosts? or not at all?
     decrypt_all_private_keys(cfg);
 
-    // by now we should have verified the config, parsed it, and decrypted all encrypted private keys.
+    // by now we have verified the config, parsed it, and decrypted all encrypted private keys.
 
     // Clean up
     free_yaml_config(&cfg);

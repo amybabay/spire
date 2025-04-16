@@ -211,3 +211,16 @@ void free_yaml_config(struct config **cfg)
     }
 }
 
+// Find the host associated with a given replica
+struct host *find_host_for_replica(struct site *site, const char *host_name)
+{
+    for (unsigned j = 0; j < site->hosts_count; j++)
+    {
+        if (strcmp(site->hosts[j].name, host_name) == 0)
+        {
+            return &site->hosts[j];
+        }
+    }
+    return NULL; // No matching host found (shouldn't happen if the config is correct)
+}
+

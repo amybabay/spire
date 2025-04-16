@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <openssl/evp.h>
+#include "parser.h"
 
 #define AES_KEYLEN 32 // AES-256
 #define AES_IVLEN 12  // IV size for AES-GCM
@@ -70,6 +71,8 @@ unsigned char *aes_decrypt_ecb(const unsigned char *ciphertext, size_t ciphertex
 unsigned char *rsa_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *pubkey, size_t *out_len);
 unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
                            EVP_PKEY *private_key, size_t *out_len);
+
+void decrypt_all_private_keys(struct config *cfg);
 
 /* PEM Key Loading */
 EVP_PKEY *load_public_key_from_pem(const char *pem_str);

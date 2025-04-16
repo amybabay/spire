@@ -11,13 +11,13 @@ def run_replica(replica_id):
 
     spines_int_cmd = f"cd /app/spire/spines/daemon && ./spines -p 8100 -c spines_int.conf -I 192.168.101.10{replica_id}"
     spines_ext_cmd = f"cd /app/spire/spines/daemon && ./spines -p 8120 -c spines_ext.conf -I 192.168.101.10{replica_id}"
-    sm_cmd = f"cd /app/spire/scada_master && ./scada_master {replica_id} {replica_id} 192.168.101.10{replica_id}:8100 192.168.101.10{replica_id}:8120"
-    prime_cmd = f"cd /app/spire/prime/bin && ./prime -i {replica_id} -g {replica_id}"
+    # sm_cmd = f"cd /app/spire/scada_master && ./scada_master {replica_id} {replica_id} 192.168.101.10{replica_id}:8100 192.168.101.10{replica_id}:8120"
+    # prime_cmd = f"cd /app/spire/prime/bin && ./prime -i {replica_id} -g {replica_id}"
 
     sp_proc = subprocess.Popen(spines_int_cmd, shell=True)
     subprocess.Popen(spines_ext_cmd, shell=True)
-    subprocess.Popen(sm_cmd, shell=True)
-    subprocess.Popen(prime_cmd, shell=True)
+    # subprocess.Popen(sm_cmd, shell=True)
+    # subprocess.Popen(prime_cmd, shell=True)
 
     sp_proc.communicate()
 
@@ -39,10 +39,6 @@ if __name__ == "__main__":
         run_replica(spire_id)
     elif mode == "client":
         run_client()
-    elif mode == "conf_agent":
-        run_conf_agent()
-    elif mode == "conf_manager":
-        run_conf_manager()
     else:
-        print("ERROR: Unknown SPIRE_MODE! Must be 'replica', 'client', 'conf_agent', or 'conf_manager'.")
+        print("ERROR: Unknown SPIRE_MODE! Must be 'replica' or 'client'.")
         sys.exit(1)

@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-
 char *hex_encode(const unsigned char *data, size_t len)
 {
     char *hex = malloc(len * 2 + 1);
@@ -445,6 +444,89 @@ unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
 }
 
 // Hex decode function
+
+
+void decrypt_all_private_keys(struct config *cfg)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
+            struct host *host = &site->hosts[j];
+
+            EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
+            if (!tpm_priv)
+            {
+                fprintf(stderr, "Host %s: Failed to load TPM private key\n", host->name);
+                continue;
+            }
+
+            char *enc_key_hex = NULL, *ciphertext_hex = NULL;
+
+            // Internal private key
+            hybrid_unpack(host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult int_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            host->unencrypted_spines_internal_private_key = int_dec.plaintext; // assign
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            // External private key
+            hybrid_unpack(host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult ext_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            host->unencrypted_spines_external_private_key = ext_dec.plaintext; // assign
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            EVP_PKEY_free(tpm_priv);
+        }
+
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
+            struct replica *rep = &site->replicas[j];
+
+            struct host *host = find_host_for_replica(site, rep->host);
+            if (!host || !host->permanent_key_location)
+            {
+                fprintf(stderr, "Replica %d: No matching host with TPM key\n", rep->instance_id);
+                continue;
+            }
+
+            EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
+            if (!tpm_priv)
+            {
+                fprintf(stderr, "Replica %d: Failed to load TPM private key\n", rep->instance_id);
+                continue;
+            }
+
+            char *enc_key_hex = NULL, *ciphertext_hex = NULL;
+
+            // Instance private key
+            hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult inst_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            rep->unencrypted_instance_private_key = inst_dec.plaintext;
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            // Prime share
+            hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult prime_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            rep->unencrypted_prime_threshold_key_share = prime_dec.plaintext;
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            // SM share
+            hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+            struct HybridDecryptionResult sm_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+            rep->unencrypted_sm_threshold_key_share = sm_dec.plaintext;
+            free(enc_key_hex);
+            free(ciphertext_hex);
+
+            EVP_PKEY_free(tpm_priv);
+        }
+    }
+}
 
 // Hybrid encryption function
 struct HybridEncrypted hybrid_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *rsa_pubkey)
