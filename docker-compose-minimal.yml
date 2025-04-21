@@ -33,3 +33,16 @@ services:
       - ./pregenerated_keys:/app/spire/pregenerated_keys
     tty: true
     stdin_open: true
+
+  spire3:
+    image: spire-img
+    container_name: spire3
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.103
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    tty: true
+    stdin_open: true

@@ -31,4 +31,10 @@ RUN python3 /app/spire/check_keys.py && \
     cd /app/spire/example_conf && ./install_conf.sh conf_4
 
 # When container starts, just drop into shell
-CMD ["/bin/bash"]
+# CMD ["/bin/bash"]
+
+COPY start_spines.py /app/spire/start_spines.py
+
+# Set entrypoint to python script
+ENTRYPOINT ["python3", "/app/spire/start_spines.py"]
+
