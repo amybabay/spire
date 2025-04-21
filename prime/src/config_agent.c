@@ -17,6 +17,7 @@
 #include "spines_lib.h"
 #include "parser.h"
 #include "key_generation.h"
+#include "def.h"
 
 #define MAX_DAEMONS 256
 #define BASE_SPINES_CONFIG "base_spines.conf"
@@ -32,10 +33,6 @@ typedef struct
 // Fragmentation and message size constants
 #define MAX_FRAGMENT_SIZE (MAX_SPINES_CLIENT_MSG - 12)
 #define MAX_TOTAL_SIZE (10 * 1024 * 1024) // 10 MB max config
-
-// Spines multicast address and port for configuration messages
-#define CONF_SPINES_MCAST_ADDR "224.0.0.1"
-#define CONF_SPINES_MCAST_PORT 8100
 
 // Structure for each configuration message fragment header
 typedef struct dummy_conf_fragment
@@ -81,17 +78,16 @@ int main(int argc, char **argv)
 
 static void Init_Network(void)
 {
-    struct sockaddr_in name;
     struct ip_mreq mreq;
 
     // create a spines socket to receive the messsages
-    Ctrl_Spines = Spines_Sock("", CONF_SPINES_MCAST_PORT, SPINES_PRIORITY, 0);
+    Ctrl_Spines = Spines_Sock("192.168.101.101", 8100, SPINES_PRIORITY, CONF_SPINES_MCAST_PORT);
     if (Ctrl_Spines < 0)
     {
         Alarm(EXIT, "Receiver: Error setting up Spines socket\n");
     }
 
-    // join t he multicast group on any interface
+    // join the multicast group on any interface
     mreq.imr_multiaddr.s_addr = inet_addr(CONF_SPINES_MCAST_ADDR);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 

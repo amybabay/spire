@@ -1,0 +1,35 @@
+
+networks:
+  spire-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.101.0/24
+          gateway: 192.168.101.1
+
+services:
+  spire1:
+    image: spire-img
+    container_name: spire1
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.101
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    tty: true
+    stdin_open: true
+
+  spire2:
+    image: spire-img
+    container_name: spire2
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.102
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+    tty: true
+    stdin_open: true

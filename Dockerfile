@@ -15,9 +15,6 @@ RUN dnf install -y gdb valgrind
 COPY . /app/spire
 WORKDIR /app/spire
 
-# Set up config files
-RUN cd example_conf; ./install_conf.sh conf_4 
-
 # Install libcyaml from source
 RUN git clone https://github.com/tlsa/libcyaml.git /tmp/libcyaml && \
     cd /tmp/libcyaml && \
@@ -26,11 +23,12 @@ RUN git clone https://github.com/tlsa/libcyaml.git /tmp/libcyaml && \
 
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
 
-# Build Spire core (Spines, Prime, SCADA Master, benchmark)
+# Build Spire core
 RUN make core
 
-# Run the script to check and generate keys if needed
-COPY run_spire.py /app/spire/run_spire.py
+# Run setup during build
+RUN python3 /app/spire/check_keys.py && \
+    cd /app/spire/example_conf && ./install_conf.sh conf_4
 
-ENTRYPOINT ["python3", "/app/spire/run_spire.py"]
-
+# When container starts, just drop into shell
+CMD ["/bin/bash"]
