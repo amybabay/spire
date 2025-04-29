@@ -78,4 +78,5 @@ void decrypt_all_private_keys(struct config *cfg);
 EVP_PKEY *load_public_key_from_pem(const char *pem_str);
 EVP_PKEY *load_key_from_file(const char *filepath, int is_private);
 
+
 #endif // KEY_GENERATION_H

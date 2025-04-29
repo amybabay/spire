@@ -1,3 +1,4 @@
+
 networks:
   spire-net:
     driver: bridge
@@ -17,9 +18,11 @@ services:
       - NET_ADMIN
     volumes:
       - ./pregenerated_keys:/app/spire/pregenerated_keys
-    environment:
-      - SPIRE_MODE=replica
-      - SPIRE_ID=1
+      - ./prime/bin/pre_configs:/app/spire/prime/bin/pre_configs
+      - ./prime/bin/post_configs:/app/spire/prime/bin/post_configs
+      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
+    tty: true
+    stdin_open: true
 
   spire2:
     image: spire-img
@@ -31,9 +34,9 @@ services:
       - NET_ADMIN
     volumes:
       - ./pregenerated_keys:/app/spire/pregenerated_keys
-    environment:
-      - SPIRE_MODE=replica
-      - SPIRE_ID=2
+      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
+    tty: true
+    stdin_open: true
 
   spire3:
     image: spire-img
@@ -45,9 +48,9 @@ services:
       - NET_ADMIN
     volumes:
       - ./pregenerated_keys:/app/spire/pregenerated_keys
-    environment:
-      - SPIRE_MODE=replica
-      - SPIRE_ID=3
+      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
+    tty: true
+    stdin_open: true
 
   spire4:
     image: spire-img
@@ -59,6 +62,6 @@ services:
       - NET_ADMIN
     volumes:
       - ./pregenerated_keys:/app/spire/pregenerated_keys
-    environment:
-      - SPIRE_MODE=replica
-      - SPIRE_ID=4
+      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
+    tty: true
+    stdin_open: true

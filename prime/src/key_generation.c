@@ -443,7 +443,7 @@ unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
     return plaintext;
 }
 
-// Hex decode function
+
 
 
 void decrypt_all_private_keys(struct config *cfg)
@@ -586,6 +586,9 @@ struct HybridDecryptionResult hybrid_decrypt(const char *ciphertext_hex,
     // Step 1: Decrypt AES key
     size_t aes_len = 0;
     unsigned char *aes_key = rsa_decrypt(enc_key, enc_key_len, rsa_privkey, &aes_len);
+    if (!aes_key) {
+        printf("[DEBUG] Failed to RSA decrypt AES key!\n");
+    }
     free(enc_key);
     if (!aes_key || aes_len != 32)
     { // must be AES-256

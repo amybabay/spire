@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
+#include <ifaddrs.h>  
 
 #include "spu_alarm.h"
 #include "spu_events.h"
@@ -19,10 +20,11 @@
 #include "key_generation.h"
 #include "def.h"
 
+
 #define MAX_DAEMONS 256
 #define BASE_SPINES_CONFIG "base_spines.conf"
-#define SPINES_INT_FILE "spines_int.conf"
-#define SPINES_EXT_FILE "spines_ext.conf"
+#define SPINES_INT_FILE "generated_spines_confs/spines_int.conf"
+#define SPINES_EXT_FILE "generated_spines_confs/spines_ext.conf"
 #define DEFAULT_SPINES_ADDR "127.0.0.1"
 #define DEFAULT_SPINES_PORT 8100
 
@@ -63,9 +65,18 @@ static int Spines_Port = DEFAULT_SPINES_PORT;
 
 static void Init_Network(void);
 static void Handle_Conf_Message(int s, int source, void *dummy);
-static void Assemble_Config(void);
 static void Usage(int argc, char **argv);
 static void Print_Usage(void);
+
+int Assemble_Config_Buffer(char **out_buf, size_t *out_len);
+int Verify_Config_Signature(const char *buf, size_t len);
+int Handle_Verified_Config(const char *yaml_data, size_t yaml_len);
+void Cleanup_Fragments(void);
+
+void generate_spines_topologies(const struct config *cfg);
+char *get_my_ip(void);
+void decrypt_private_keys(struct config *cfg, const char *my_ip);
+
 
 int main(int argc, char **argv)
 {
@@ -95,7 +106,7 @@ static void Init_Network(void)
     Ctrl_Spines = Spines_Sock(Spines_Addr, Spines_Port, SPINES_PRIORITY, CONF_SPINES_MCAST_PORT);
     if (Ctrl_Spines < 0)
     {
-        Alarm(EXIT, "Receiver: Error setting up Spines socket\n");
+        Alarm(EXIT, "Config_Agent: Error setting up Spines socket\n");
     }
 
     // join the multicast group on any interface
@@ -105,10 +116,10 @@ static void Init_Network(void)
     // add multicast group membership for spines socket
     if (spines_setsockopt(Ctrl_Spines, IPPROTO_IP, SPINES_ADD_MEMBERSHIP, (void *)&mreq, sizeof(mreq)) < 0)
     {
-        Alarm(EXIT, "Receiver: Failed to join multicast group\n");
+        Alarm(EXIT, "Config_Agent: Failed to join multicast group\n");
     }
 
-    Alarm(PRINT, "Receiver: Spines multicast network ready\n");
+    Alarm(PRINT, "Config_Agent: Spines multicast network ready\n");
 }
 
 static void Handle_Conf_Message(int s, int source, void *dummy)
@@ -117,13 +128,15 @@ static void Handle_Conf_Message(int s, int source, void *dummy)
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
 
+    // receive frag from spines socket
     int ret = spines_recvfrom(s, buffer, sizeof(buffer), 0, (struct sockaddr *)&from_addr, &from_len);
     if (ret <= 0)
         return;
 
+    // ignore if fragments too small
     if (ret < sizeof(conf_fragment))
     {
-        Alarm(DEBUG, "Receiver: Received fragment too small\n");
+        Alarm(DEBUG, "Config_Agent: Received fragment too small\n");
         return;
     }
 
@@ -131,14 +144,17 @@ static void Handle_Conf_Message(int s, int source, void *dummy)
     char *payload = buffer + sizeof(conf_fragment);
     size_t payload_len = ret - sizeof(conf_fragment);
 
+    // ignore duplicate and older config ids
     if (hdr->conf_id <= Last_Seen_Conf_ID)
     {
-        Alarm(DEBUG, "Receiver: Ignoring duplicate or older conf_id %u (last seen: %u)\n", hdr->conf_id, Last_Seen_Conf_ID);
+        Alarm(DEBUG, "Config_Agent: Ignoring duplicate or older conf_id %u (last seen: %u)\n", hdr->conf_id, Last_Seen_Conf_ID);
         return;
     }
 
+    // if its the first time seeing this config id, or its a new config id
     if (expected_fragments == -1 || hdr->conf_id != Conf_ID)
     {
+        // clean up if there are existing fragments
         if (fragment_data != NULL)
         {
             for (int i = 0; i < expected_fragments; i++)
@@ -151,6 +167,7 @@ static void Handle_Conf_Message(int s, int source, void *dummy)
             fragment_lens = NULL;
         }
 
+        // update state for new config
         expected_fragments = hdr->total_fragments;
         received_fragments = 0;
         Conf_ID = hdr->conf_id;
@@ -158,118 +175,146 @@ static void Handle_Conf_Message(int s, int source, void *dummy)
         fragment_data = calloc(expected_fragments, sizeof(char *));
         fragment_lens = calloc(expected_fragments, sizeof(size_t));
 
-        Alarm(DEBUG, "Receiver: Resetting to expect %d fragments for new conf ID %u\n", expected_fragments, Conf_ID);
+        Alarm(DEBUG, "Config_Agent: Resetting to expect %d fragments for new conf ID %u\n", expected_fragments, Conf_ID);
     }
 
+    // drop unexpected fragments
     if (hdr->conf_id < Conf_ID || hdr->fragment_index >= expected_fragments)
     {
-        Alarm(DEBUG, "Receiver: Unexpected conf_id or fragment index\n");
+        Alarm(DEBUG, "Config_Agent: Unexpected conf_id or fragment index\n");
         return;
     }
 
+    // drop duplicate f ragments
     if (fragment_data[hdr->fragment_index] != NULL)
     {
-        Alarm(DEBUG, "Receiver: Duplicate fragment %d ignored\n", hdr->fragment_index);
+        Alarm(DEBUG, "Config_Agent: Duplicate fragment %d ignored\n", hdr->fragment_index);
         return;
     }
 
+    // store fragment
     fragment_data[hdr->fragment_index] = malloc(payload_len);
     memcpy(fragment_data[hdr->fragment_index], payload, payload_len);
     fragment_lens[hdr->fragment_index] = payload_len;
     received_fragments++;
 
-    Alarm(DEBUG, "Receiver: Got fragment %d/%d (len=%lu)\n", hdr->fragment_index + 1, expected_fragments, payload_len);
+    Alarm(DEBUG, "Config_Agent: Got fragment %d/%d (len=%lu)\n", hdr->fragment_index + 1, expected_fragments, payload_len);
 
+    // if all fragments received, assemble and process the config
     if (received_fragments == expected_fragments)
     {
-        Alarm(PRINT, "Receiver: All %d fragments received. Assembling config...\n", expected_fragments);
-        Assemble_Config();
+        Alarm(PRINT, "Config_Agent: All %d fragments received. Assembling config...\n", expected_fragments);
+
+        char *assembled = NULL;
+        size_t assembled_len = 0;
+
+        // combine frags into a full buffer
+        if (Assemble_Config_Buffer(&assembled, &assembled_len) != 0)
+        {
+            Alarm(PRINT, "Config_Agent: Failed to assemble config buffer\n");
+            Cleanup_Fragments();
+            return;
+        }
+
+        // verify the signature
+        if (Verify_Config_Signature(assembled, assembled_len) != 0)
+        {
+            Alarm(PRINT, "Config_Agent: Signature is INVALID\n");
+            free(assembled);
+            Conf_ID = 0;
+            Cleanup_Fragments();
+            return;
+        }
+
+        // parse the yaml and process the config
+        if (Handle_Verified_Config(assembled, assembled_len) != 0)
+        {
+            Alarm(PRINT, "Config_Agent: Failed to handle verified config\n");
+        }
+        else
+        {
+            Last_Seen_Conf_ID = Conf_ID;
+            Conf_ID = 0;
+        }
+
+        free(assembled);
+        Cleanup_Fragments();
     }
 }
 
-static void Assemble_Config(void)
+// reassembles fragments into one buffer
+int Assemble_Config_Buffer(char **out_buf, size_t *out_len)
 {
+    if (!fragment_data || !fragment_lens || expected_fragments <= 0)
+        return -1;
+
     size_t total_len = 0;
     for (int i = 0; i < expected_fragments; i++)
     {
-        if (fragment_data[i] == NULL)
-        {
-            Alarm(EXIT, "Receiver: Missing fragment %d, cannot assemble config\n", i);
-        }
+        if (!fragment_data[i])
+            return -2;
         total_len += fragment_lens[i];
     }
 
     char *assembled = malloc(total_len);
-    if (assembled == NULL)
-    {
-        Alarm(EXIT, "Receiver: Failed to allocate memory for assembled config\n");
-    }
+    if (!assembled)
+        return -3;
 
     size_t offset = 0;
     for (int i = 0; i < expected_fragments; i++)
     {
         memcpy(assembled + offset, fragment_data[i], fragment_lens[i]);
         offset += fragment_lens[i];
-        free(fragment_data[i]);
     }
-    free(fragment_data);
-    free(fragment_lens);
-    fragment_data = NULL;
-    fragment_lens = NULL;
 
-    // Parse signature length and signature
-    if (total_len < sizeof(uint32_t))
-    {
-        Alarm(PRINT, "Receiver: Message too short\n");
-        free(assembled);
-        return;
-    }
+    *out_buf = assembled;
+    *out_len = total_len;
+    return 0;
+}
+
+// validates signature on config buffer
+int Verify_Config_Signature(const char *buf, size_t len)
+{
+    if (len < sizeof(uint32_t))
+        return -1;
 
     uint32_t sig_len;
-    memcpy(&sig_len, assembled, sizeof(uint32_t));
+    memcpy(&sig_len, buf, sizeof(uint32_t));
+    if (len < sizeof(uint32_t) + sig_len)
+        return -2;
 
-    if (total_len < sizeof(uint32_t) + sig_len)
-    {
-        Alarm(PRINT, "Receiver: Signature too short\n");
-        free(assembled);
-        return;
-    }
+    unsigned char *signature = (unsigned char *)(buf + sizeof(uint32_t));
+    const char *yaml_data = buf + sizeof(uint32_t) + sig_len;
+    size_t yaml_len = len - (sizeof(uint32_t) + sig_len);
 
-    unsigned char *signature = (unsigned char *)(assembled + sizeof(uint32_t));
-    char *yaml_data = (char *)(assembled + sizeof(uint32_t) + sig_len);
-    size_t yaml_len = total_len - (sizeof(uint32_t) + sig_len);
-
-    // Verify the signature using cm_keys/public_key.pem
     EVP_PKEY *pubkey = load_key_from_file("cm_keys/public_key.pem", 0);
     if (!pubkey)
-    {
-        Alarm(PRINT, "Receiver: Failed to load CM public key\n");
-        free(assembled);
-        return;
-    }
+        return -3;
 
     int valid = verify_buffer((unsigned char *)yaml_data, yaml_len, signature, sig_len, pubkey);
-    Alarm(PRINT, "Receiver: Signature is %s\n", valid == 0 ? "VALID" : "INVALID");
     EVP_PKEY_free(pubkey);
 
-    if (valid != 0)
-    {
-        free(assembled);
-        return;
-    }
+    return valid == 0 ? 0 : -4;
+}
 
-    // Parse YAML into config
+// loads, saves, and processes a verified yaml config
+int Handle_Verified_Config(const char *buf, size_t len)
+{
+    uint32_t sig_len;
+    memcpy(&sig_len, buf, sizeof(uint32_t));
+    const char *yaml_data = buf + sizeof(uint32_t) + sig_len;
+    size_t yaml_len = len - (sizeof(uint32_t) + sig_len);
+
     struct config *cfg = load_yaml_config_from_string(yaml_data, yaml_len);
     if (!cfg)
-    {
-        Alarm(PRINT, "Receiver: Failed to parse YAML config\n");
-        free(assembled);
-        return;
-    }
+        return -1;
 
-    Alarm(PRINT, "Receiver: Parsed config ID = %u\n", cfg->configuration_id);
+    generate_spines_topologies(cfg);
+    char *my_ip = get_my_ip();
+    decrypt_private_keys(cfg, my_ip);
+    free(my_ip);
 
-    // Create directory if needed
+
     const char *dir = "received_configs";
     struct stat st = {0};
     if (stat(dir, &st) == -1)
@@ -285,39 +330,43 @@ static void Assemble_Config(void)
     snprintf(filename, sizeof(filename),
              "%s/config_%u_%04d%02d%02d_%02d%02d%02d.yaml",
              dir,
-             cfg->configuration_id,
+             Conf_ID,
              t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
              t->tm_hour, t->tm_min, t->tm_sec);
 
     FILE *fp = fopen(filename, "w");
     if (!fp)
     {
-        Alarm(PRINT, "Receiver: Failed to write config file to %s\n", filename);
+        Alarm(PRINT, "Config_Agent: Failed to write config file to %s\n", filename);
     }
     else
     {
         fwrite(yaml_data, 1, yaml_len, fp);
         fclose(fp);
-        Alarm(PRINT, "Receiver: Saved config to %s\n", filename);
+        Alarm(PRINT, "Config_Agent: Saved config to %s\n", filename);
     }
 
-    // decrypt all encrypted private/threshold keys
-    // ?? Should all of them be decrypted? or just this hosts? or not at all?
-    decrypt_all_private_keys(cfg);
-
-    // by now we have verified the config, parsed it, and decrypted all encrypted private keys.
-
-    // Clean up
     free_yaml_config(&cfg);
-    free(assembled);
-    // Reset fragment tracking state
-    Last_Seen_Conf_ID = Conf_ID;
-    Conf_ID = 0;
-    expected_fragments = -1;
-    received_fragments = 0;
-    fragment_data = NULL;
+    return 0;
+}
+
+void Cleanup_Fragments(void)
+{
+    if (fragment_data)
+    {
+        for (int i = 0; i < expected_fragments; i++)
+        {
+            free(fragment_data[i]);
+        }
+        free(fragment_data);
+        fragment_data = NULL;
+    }
+
+    free(fragment_lens);
     fragment_lens = NULL;
-    
+
+    received_fragments = 0;
+    expected_fragments = -1;
 }
 
 static void Usage(int argc, char **argv)
@@ -425,13 +474,38 @@ static void write_topology_file(const char *output_path, DaemonEntry *hosts, siz
     fclose(out);
 }
 
+/**
+ * Generates two Spines topology configuration files (`spines_int.conf` and `spines_ext.conf`)
+ * based on the parsed YAML configuration structure. The function creates:
+ *
+ *   - Internal topology (spines_int.conf): A full mesh of hosts marked with `runs_spines_internal`.
+ *   - External topology (spines_ext.conf): A full mesh of replica hosts, with each replica also
+ *     connected to all client hosts that run `spines_external` in client-type sites.
+ *
+ * Each topology file is built by copying from a shared base configuration file (`base_spines.conf`),
+ * then appending a `Hosts {}` and `Edges {}` section that defines node IDs and connectivity.
+ *
+ * Parameters:
+ *   cfg - Pointer to the in-memory configuration struct.
+ *
+ * Output:
+ *   Writes two files to the current directory:
+ *     - spines_int.conf
+ *     - spines_ext.conf
+ *     - does not write spines_ctrl.conf
+ *
+ * Notes:
+ *   - Host entries are deduplicated by IP.
+ *   - Replica host lookups are performed using `find_host_for_replica`.
+ *   - Host and edge IDs start at 1.
+ */
 void generate_spines_topologies(const struct config *cfg)
 {
     // declaring arrays to hold DaemonEntries
-    DaemonEntry internal_daemons[MAX_DAEMONS];
-    DaemonEntry external_replicas[MAX_DAEMONS];
-    DaemonEntry external_clients[MAX_DAEMONS];
-    size_t internal_count = 0, replica_ext_count = 0, client_ext_count = 0;
+    DaemonEntry internal_daemons[MAX_DAEMONS];                              // internal spines daemons
+    DaemonEntry external_replicas[MAX_DAEMONS];                             // external daemons running on replica hosts
+    DaemonEntry external_clients[MAX_DAEMONS];                              // external daemons running on client hosts
+    size_t internal_count = 0, replica_ext_count = 0, client_ext_count = 0; // tracks the size
 
     // for each site
     for (unsigned i = 0; i < cfg->sites_count; i++)
@@ -439,27 +513,36 @@ void generate_spines_topologies(const struct config *cfg)
         struct site *site = &cfg->sites[i];
 
         // Hosts
-        // for each host
         for (unsigned j = 0; j < site->hosts_count; j++)
         {
-            // if it runs spines internal, add it to the internal daemon list
             struct host *h = &site->hosts[j];
+
+            // Collect hosts that run internal Spines
             if (h->runs_spines_internal)
+            {
                 append_daemon(internal_daemons, &internal_count, h->ip);
-            // if it runs spines external, add it to the external daemon list
-            if (h->runs_spines_external && site->type == CLIENT)
+            }
+
+            // If this is a CLIENT site, collect external daemons (like PLC and HMI)
+            if (site->type == CLIENT && h->runs_spines_external)
+            {
                 append_daemon(external_clients, &client_ext_count, h->ip);
+            }
         }
 
         // Replicas
-        // for each replica
-        for (unsigned j = 0; j < site->replicas_count; j++)
+        if (site->type != DATA_CENTER)
         {
-            // ensure theres a host and add it to external replica daemons list
-            struct replica *r = &site->replicas[j];
-            struct host *replica_host = find_host_for_replica(site, r->host);
-            if (replica_host && replica_host->ip)
-                append_daemon(external_replicas, &replica_ext_count, replica_host->ip);
+            for (unsigned j = 0; j < site->replicas_count; j++)
+            {
+                struct replica *r = &site->replicas[j];
+                struct host *replica_host = find_host_for_replica(site, r->host);
+
+                if (replica_host && replica_host->runs_spines_external)
+                {
+                    append_daemon(external_replicas, &replica_ext_count, replica_host->ip);
+                }
+            }
         }
     }
 
@@ -510,4 +593,124 @@ void generate_spines_topologies(const struct config *cfg)
     }
     fprintf(out, "}\n");
     fclose(out);
+}
+
+
+char *get_my_ip()
+{
+    struct ifaddrs *ifaddr, *ifa;
+    char *ip = NULL;
+
+    if (getifaddrs(&ifaddr) == -1)
+        return NULL;
+
+    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next)
+    {
+        if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET)
+            continue;
+
+        struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
+        if (strcmp(ifa->ifa_name, "lo") == 0) // Skip loopback
+            continue;
+
+        ip = strdup(inet_ntoa(sa->sin_addr));
+        break;
+    }
+
+    freeifaddrs(ifaddr);
+    return ip;
+}
+
+static struct host *find_my_host(struct config *cfg, const char *my_ip)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
+        struct site *site = &cfg->sites[i];
+        for (unsigned j = 0; j < site->hosts_count; j++) {
+            struct host *h = &site->hosts[j];
+            if (strcmp(h->ip, my_ip) == 0)
+                return h;
+        }
+    }
+    return NULL;
+}
+
+void decrypt_private_keys(struct config *cfg, const char *my_ip)
+{
+    struct host *my_host = find_my_host(cfg, my_ip);
+    if (!my_host) {
+        Alarm(PRINT, "Cannot find host matching IP: %s\n", my_ip);
+        return;
+    }
+    printf("[DEBUG] I am host: %s (IP: %s), TPM key at: %s\n", my_host->name, my_ip, my_host->permanent_key_location);
+
+    EVP_PKEY *tpm_priv = load_key_from_file(my_host->permanent_key_location, 1);
+    if (!tpm_priv) {
+        Alarm(PRINT, "Failed to load TPM private key for my host\n");
+        return;
+    }
+
+    // Decrypt my spines internal key
+    if (my_host->encrypted_spines_internal_private_key) {
+        char *enc_key_hex, *ciphertext_hex;
+        hybrid_unpack(my_host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
+        struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+        my_host->unencrypted_spines_internal_private_key = dec.plaintext;
+        free(enc_key_hex);
+        free(ciphertext_hex);
+        printf("\n[Internal Spines Private Key]:\n%s\n", dec.plaintext);
+    }
+
+    // Decrypt my spines external key
+    if (my_host->encrypted_spines_external_private_key) {
+        char *enc_key_hex, *ciphertext_hex;
+        hybrid_unpack(my_host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
+        struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+        my_host->unencrypted_spines_external_private_key = dec.plaintext;
+        free(enc_key_hex);
+        free(ciphertext_hex);
+        printf("\n[External Spines Private Key]:\n%s\n", my_host->unencrypted_spines_external_private_key);
+    }
+
+    // Decrypt replicas assigned to my_host
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
+        struct site *site = &cfg->sites[i];
+        for (unsigned j = 0; j < site->replicas_count; j++) {
+            struct replica *rep = &site->replicas[j];
+            struct host *rep_host = find_host_for_replica(site, rep->host);
+
+            if (rep_host == my_host) {
+                if (rep->encrypted_instance_private_key) {
+                    char *enc_key_hex, *ciphertext_hex;
+                    hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
+                    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+                    rep->unencrypted_instance_private_key = dec.plaintext;
+                    free(enc_key_hex);
+                    free(ciphertext_hex);
+                    printf("\n[Instance Private Key] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_instance_private_key);
+                }
+
+                if (rep->encrypted_prime_threshold_key_share) {
+                    char *enc_key_hex, *ciphertext_hex;
+                    hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+                    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+                    rep->unencrypted_prime_threshold_key_share = dec.plaintext;
+                    free(enc_key_hex);
+                    free(ciphertext_hex);
+                    printf("\n[Prime Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_prime_threshold_key_share);
+                }
+
+                if (rep->encrypted_sm_threshold_key_share) {
+                    char *enc_key_hex, *ciphertext_hex;
+                    hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+                    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+                    rep->unencrypted_sm_threshold_key_share = dec.plaintext;
+                    free(enc_key_hex);
+                    free(ciphertext_hex);
+                    printf("\n[SM Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_sm_threshold_key_share);
+                }
+            }
+        }
+    }
+
+    EVP_PKEY_free(tpm_priv);
 }
