@@ -1393,6 +1393,7 @@ void PRE_ORDER_Initialize_Data_Structure()
   }
   DATA.PO.intro_client_seq[VAR.My_Server_ID].incarnation =  DATA.PR.new_incarnation_val[VAR.My_Server_ID];
 
+  /* AB TODO MAX_ACK_PARTS: add po_ack_max_parts field here */
   DATA.PO.po_ack_start_server = 0;
   DATA.PO.po_ack_start_seq = zero_ps;
 
