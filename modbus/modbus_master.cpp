@@ -414,7 +414,7 @@ static void init(int ac, char **av)
 
     // Net Setup
     Type = RTU_TYPE;
-    Prime_Client_ID = (NUM_SM + 1) + My_ID;
+    Prime_Client_ID = MAX_NUM_SERVER_SLOTS + My_ID;
     My_IP = getIP();
 
     // Setup IPC for the RTU Proxy main thread
