@@ -52,11 +52,11 @@
 /* extern server_variables VAR; */
 
 #define TIME_GENERATE_SIG_SHARE 0
-#define NUM_SITES 1 //JCS: don't want to modify whole thing, so just defined this here...
+#define TC_NUM_SITES 1 //JCS: don't want to modify whole thing, so just defined this here...
 
 TC_IND *tc_partial_key; /* My Partial Key */
-TC_PK *tc_public_key[NUM_SITES+1];   /* Public Key of Site */
-TC_PK *tc_sm_public_key[NUM_SITES+1];   /* MK: Public Key of SM Site */
+TC_PK *tc_public_key[TC_NUM_SITES+1];   /* Public Key of Site */
+TC_PK *tc_sm_public_key[TC_NUM_SITES+1];   /* MK: Public Key of SM Site */
 TC_IND_SIG **tc_partial_signatures; /* A list of Partial Signatures */
 
 void assert(int ret, int expect, char *s) {
@@ -94,7 +94,7 @@ void TC_Read_Public_Key()
     char dir[100] = "./keys";
     char dir2[100] = "../../scada_master/sm_keys";
 
-    for ( nsite = 1; nsite <= NUM_SITES; nsite++ ) {
+    for ( nsite = 1; nsite <= TC_NUM_SITES; nsite++ ) {
         sprintf(buf,"%s/pubkey_%d.pem", dir, nsite);
         tc_public_key[nsite] = (TC_PK *)TC_read_public_key(buf);
         sprintf(buff2,"%s/pubkey_%d.pem", dir2, nsite);
@@ -265,7 +265,7 @@ int32u TC_Verify_Signature( int32u site, byte *signature, byte *digest )
     hash_bn = BN_bin2bn( digest, DIGEST_SIZE, NULL );
     sig_bn = BN_bin2bn( signature, SIGNATURE_SIZE, NULL );
 
-    if ( site == 0 || site > NUM_SITES ) {
+    if ( site == 0 || site > TC_NUM_SITES ) {
     ret = 0;
     } else {
     ret = TC_verify(hash_bn, sig_bn, tc_public_key[site]);
@@ -290,7 +290,7 @@ int32u TC_Verify_SM_Signature( int32u site, byte *signature, byte *digest )
     hash_bn = BN_bin2bn( digest, DIGEST_SIZE, NULL );
     sig_bn = BN_bin2bn( signature, SIGNATURE_SIZE, NULL );
 
-    if ( site == 0 || site > NUM_SITES ) {
+    if ( site == 0 || site > TC_NUM_SITES ) {
     ret = 0;
     } else {
     ret = TC_verify(hash_bn, sig_bn, tc_sm_public_key[site]);
@@ -321,7 +321,7 @@ int TC_Check_Share( byte* digest, int32u sender_id )
 
 void TC_Generate(int req_shares, char *directory)
 {
-    TC_DEALER *dealer; //[NUM_SITES+1];
+    TC_DEALER *dealer; //[TC_NUM_SITES+1];
     int nsite;
     int faults, rej_servers, n, k, keysize, num_sites;
 
@@ -331,7 +331,7 @@ void TC_Generate(int req_shares, char *directory)
     n = 3*faults+ 2*rej_servers +1;
     k = req_shares;
     //k = 2*faults+ rej_servers +1;
-    num_sites = NUM_SITES;
+    num_sites = TC_NUM_SITES;
 
     for ( nsite = 1; nsite <= num_sites; nsite++ ) {
         printf("Generating threshold crypto keys for site %d\n",nsite);
