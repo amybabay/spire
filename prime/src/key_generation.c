@@ -43,7 +43,6 @@ unsigned char *hex_decode(const char *hexstr, size_t *out_len)
     return out;
 }
 
-
 static char *write_key_to_pem(EVP_PKEY *pkey, int is_public, const char *passphrase)
 {
     if (!pkey)
@@ -122,16 +121,16 @@ EVP_PKEY *generate_rsa_key(int bits)
     return pkey;            // Return the generated key
 }
 
-char *generate_and_get_public_key(int bits)
-{
-    EVP_PKEY *key = generate_rsa_key(bits);
-    if (!key)
-        return NULL;
+// char *generate_and_get_public_key(int bits)
+// {
+//     EVP_PKEY *key = generate_rsa_key(bits);
+//     if (!key)
+//         return NULL;
 
-    char *pem = get_public_key(key);
-    free_rsa_key(key);
-    return pem;
-}
+//     char *pem = get_public_key(key);
+//     free_rsa_key(key);
+//     return pem;
+// }
 
 /* ---------- Key Serialization ---------- */
 
@@ -145,10 +144,10 @@ char *get_private_key(EVP_PKEY *pkey)
     return write_key_to_pem(pkey, 0, NULL);
 }
 
-char *get_encrypted_private_key(EVP_PKEY *pkey, const char *passphrase)
-{
-    return write_key_to_pem(pkey, 0, passphrase);
-}
+// char *get_encrypted_private_key(EVP_PKEY *pkey, const char *passphrase)
+// {
+//     return write_key_to_pem(pkey, 0, passphrase);
+// }
 
 // Free EVP_PKEY structure
 void free_rsa_key(EVP_PKEY *pkey)
@@ -443,91 +442,6 @@ unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
     return plaintext;
 }
 
-
-
-
-void decrypt_all_private_keys(struct config *cfg)
-{
-    for (unsigned i = 0; i < cfg->sites_count; i++)
-    {
-        struct site *site = &cfg->sites[i];
-
-        for (unsigned j = 0; j < site->hosts_count; j++)
-        {
-            struct host *host = &site->hosts[j];
-
-            EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
-            if (!tpm_priv)
-            {
-                fprintf(stderr, "Host %s: Failed to load TPM private key\n", host->name);
-                continue;
-            }
-
-            char *enc_key_hex = NULL, *ciphertext_hex = NULL;
-
-            // Internal private key
-            hybrid_unpack(host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult int_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-            host->unencrypted_spines_internal_private_key = int_dec.plaintext; // assign
-            free(enc_key_hex);
-            free(ciphertext_hex);
-
-            // External private key
-            hybrid_unpack(host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult ext_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-            host->unencrypted_spines_external_private_key = ext_dec.plaintext; // assign
-            free(enc_key_hex);
-            free(ciphertext_hex);
-
-            EVP_PKEY_free(tpm_priv);
-        }
-
-        for (unsigned j = 0; j < site->replicas_count; j++)
-        {
-            struct replica *rep = &site->replicas[j];
-
-            struct host *host = find_host_for_replica(site, rep->host);
-            if (!host || !host->permanent_key_location)
-            {
-                fprintf(stderr, "Replica %d: No matching host with TPM key\n", rep->instance_id);
-                continue;
-            }
-
-            EVP_PKEY *tpm_priv = load_key_from_file(host->permanent_key_location, 1);
-            if (!tpm_priv)
-            {
-                fprintf(stderr, "Replica %d: Failed to load TPM private key\n", rep->instance_id);
-                continue;
-            }
-
-            char *enc_key_hex = NULL, *ciphertext_hex = NULL;
-
-            // Instance private key
-            hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult inst_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-            rep->unencrypted_instance_private_key = inst_dec.plaintext;
-            free(enc_key_hex);
-            free(ciphertext_hex);
-
-            // Prime share
-            hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult prime_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-            rep->unencrypted_prime_threshold_key_share = prime_dec.plaintext;
-            free(enc_key_hex);
-            free(ciphertext_hex);
-
-            // SM share
-            hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
-            struct HybridDecryptionResult sm_dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-            rep->unencrypted_sm_threshold_key_share = sm_dec.plaintext;
-            free(enc_key_hex);
-            free(ciphertext_hex);
-
-            EVP_PKEY_free(tpm_priv);
-        }
-    }
-}
-
 // Hybrid encryption function
 struct HybridEncrypted hybrid_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *rsa_pubkey)
 {
@@ -583,10 +497,11 @@ struct HybridDecryptionResult hybrid_decrypt(const char *ciphertext_hex,
         return result;
     }
 
-    // Step 1: Decrypt AES key
+    // Decrypt AES key
     size_t aes_len = 0;
     unsigned char *aes_key = rsa_decrypt(enc_key, enc_key_len, rsa_privkey, &aes_len);
-    if (!aes_key) {
+    if (!aes_key)
+    {
         printf("[DEBUG] Failed to RSA decrypt AES key!\n");
     }
     free(enc_key);
@@ -597,7 +512,7 @@ struct HybridDecryptionResult hybrid_decrypt(const char *ciphertext_hex,
         return result;
     }
 
-    // Step 2: Decrypt ciphertext
+    // Decrypt ciphertext
     unsigned char *plaintext = aes_decrypt_ecb(ciphertext, ct_len, aes_key, &result.length);
     free(aes_key);
     free(ciphertext);
@@ -606,25 +521,25 @@ struct HybridDecryptionResult hybrid_decrypt(const char *ciphertext_hex,
 }
 
 // Concatenate into one string: enc_key_hex + ciphertext_hex
-char* hybrid_pack(const struct HybridEncrypted* enc)
+char *hybrid_pack(const struct HybridEncrypted *enc)
 {
     size_t total_len = strlen(enc->enc_key_hex) + strlen(enc->ciphertext_hex) + 1;
-    char* combined = malloc(total_len);
-    if (!combined) return NULL;
+    char *combined = malloc(total_len);
+    if (!combined)
+        return NULL;
 
     strcpy(combined, enc->enc_key_hex);
     strcat(combined, enc->ciphertext_hex);
     return combined;
 }
 
-void hybrid_unpack(const char* packed, char** out_enc_key_hex, char** out_ciphertext_hex)
+void hybrid_unpack(const char *packed, char **out_enc_key_hex, char **out_ciphertext_hex)
 {
     size_t rsa_hex_len = 384 * 2; // 3072-bit key = 384 bytes = 768 hex chars
 
     *out_enc_key_hex = strndup(packed, rsa_hex_len);
     *out_ciphertext_hex = strdup(packed + rsa_hex_len);
 }
-
 
 EVP_PKEY *load_public_key_from_pem(const char *pem_str)
 {
@@ -676,4 +591,40 @@ EVP_PKEY *load_key_from_file(const char *filepath, int is_private)
         ERR_print_errors_fp(stderr);
 
     return key;
+}
+
+/* Load a hybrid-encrypted PEM RSA key from packed format */
+EVP_PKEY *load_decrypted_key(const char *packed, EVP_PKEY *rsa_privkey)
+{
+    if (!packed || !rsa_privkey)
+        return NULL;
+
+    char *enc_key_hex = NULL, *ciphertext_hex = NULL;
+    hybrid_unpack(packed, &enc_key_hex, &ciphertext_hex);
+    if (!enc_key_hex || !ciphertext_hex)
+    {
+        free(enc_key_hex);
+        free(ciphertext_hex);
+        return NULL;
+    }
+
+    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, rsa_privkey);
+    free(enc_key_hex);
+    free(ciphertext_hex);
+
+    if (!dec.plaintext)
+        return NULL;
+
+    BIO *bio = BIO_new_mem_buf(dec.plaintext, (int)dec.length);
+    if (!bio)
+    {
+        free(dec.plaintext);
+        return NULL;
+    }
+
+    EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+    free(dec.plaintext);
+
+    return pkey;
 }

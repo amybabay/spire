@@ -98,19 +98,6 @@ static const cyaml_config_t cyaml_config = {
     .mem_fn = cyaml_mem,
 };
 
-// Helper Struct for generating topology data
-struct topology_data
-{
-    struct topology_host *internal_hosts;
-    int internal_host_count;
-
-    struct topology_host *replicas;
-    int replica_count;
-
-    struct topology_host *clients;
-    int client_count;
-};
-
 // Function to load YAML config
 struct config *load_yaml_config(const char *yaml_file)
 {
@@ -126,26 +113,6 @@ struct config *load_yaml_config(const char *yaml_file)
     }
 
     return buff;
-}
-
-int save_yaml_config(const char *yaml_file, struct config *cfg)
-{
-    cyaml_err_t err;
-
-    if (!yaml_file || !cfg)
-    {
-        fprintf(stderr, "Invalid arguments to save_yaml_config()\n");
-        return -1;
-    }
-
-    err = cyaml_save_file(yaml_file, &cyaml_config, &config_schema, cfg, 0);
-    if (err != CYAML_OK)
-    {
-        fprintf(stderr, "Error saving YAML file '%s': %s\n", yaml_file, cyaml_strerror(err));
-        return -1;
-    }
-
-    return 0;
 }
 
 char *serialize_yaml_config_to_string(const struct config *cfg, size_t *out_len)
@@ -179,8 +146,10 @@ char *serialize_yaml_config_to_string(const struct config *cfg, size_t *out_len)
     return yaml_str; // caller must free
 }
 
-struct config *load_yaml_config_from_string(const char *yaml_str, size_t yaml_len) {
-    if (!yaml_str || yaml_len == 0) {
+struct config *load_yaml_config_from_string(const char *yaml_str, size_t yaml_len)
+{
+    if (!yaml_str || yaml_len == 0)
+    {
         fprintf(stderr, "Invalid YAML input string or length\n");
         return NULL;
     }
@@ -191,7 +160,8 @@ struct config *load_yaml_config_from_string(const char *yaml_str, size_t yaml_le
         &cyaml_config, &config_schema,
         (void **)&cfg, NULL);
 
-    if (err != CYAML_OK) {
+    if (err != CYAML_OK)
+    {
         fprintf(stderr, "Error loading YAML from string: %s\n", cyaml_strerror(err));
         return NULL;
     }
@@ -223,4 +193,3 @@ struct host *find_host_for_replica(struct site *site, const char *host_name)
     }
     return NULL; // No matching host found (shouldn't happen if the config is correct)
 }
-
