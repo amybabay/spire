@@ -58,3 +58,12 @@ sites:
       - name: goldenrod11
         ip: 192.168.101.108
         runs_spines_external: 1
+    clients:
+      - client_id: 2 
+        host: goldenrod11
+        spines_external_daemon: goldenrod11
+        type: (hmis (JHU, PNNL, or EMS), proxy, benchmark) # args needed: spines addr, port (specified in def.h as SPINES_EXT_PORT, SPINES_INT_PORT)
+        # keys
+        # instance_public_key: XXXX
+        # encrypted_instance_private_key: XXXX
+        

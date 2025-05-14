@@ -46,6 +46,23 @@ static const cyaml_schema_value_t replica_schema = {
 };
 
 /**
+ * Client Schema Declaration
+ */
+
+static const cyaml_schema_field_t client_schema_fields[] = {
+    CYAML_FIELD_UINT("client_id", CYAML_FLAG_DEFAULT, struct client, client_id),
+    CYAML_FIELD_STRING_PTR("host", CYAML_FLAG_POINTER, struct client, host, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("spines_external_daemon", CYAML_FLAG_POINTER, struct client, spines_external_daemon, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("type", CYAML_FLAG_POINTER, struct client, type, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("instance_public_key", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct client, instance_public_key, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("encrypted_instance_private_key", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct client, encrypted_instance_private_key, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_END};
+
+static const cyaml_schema_value_t client_schema = {
+    CYAML_VALUE_MAPPING(CYAML_FLAG_DEFAULT, struct client, client_schema_fields),
+};
+
+/**
  * Site Schema Declaration
  */
 
@@ -60,6 +77,8 @@ static const cyaml_schema_field_t site_schema_fields[] = {
     CYAML_FIELD_ENUM("type", CYAML_FLAG_DEFAULT, struct site, type, site_type_strings, CYAML_ARRAY_LEN(site_type_strings)),
     CYAML_FIELD_SEQUENCE_COUNT("hosts", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct site, hosts, hosts_count, &host_schema, 0, CYAML_UNLIMITED),
     CYAML_FIELD_SEQUENCE_COUNT("replicas", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct site, replicas, replicas_count, &replica_schema, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_SEQUENCE_COUNT("clients", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct site, clients, clients_count, &client_schema, 0, CYAML_UNLIMITED),
+
     CYAML_FIELD_END};
 
 static const cyaml_schema_value_t site_schema = {

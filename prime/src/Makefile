@@ -63,14 +63,15 @@ PRIME_OBJ = prime.o data_structs.o utility.o network.o pre_order.o \
 	util_dll.o validate.o nm_process.o process.o packets.o order.o  \
 	signature.o net_wrapper.o merkle.o suspect_leader.o \
 	reliable_broadcast.o view_change.o erasure.o recon.o \
-	tc_wrapper.o catchup.o proactive_recovery.o $(WRAPPER_OBJ)
+	tc_wrapper.o catchup.o proactive_recovery.o \
+	parser.o key_generation.o $(WRAPPER_OBJ)
 
 
 DRIVER_OBJ = driver.o data_structs.o utility.o network.o pre_order.o \
 	util_dll.o packets.o nm_process.o process.o order.o \
 	signature.o net_wrapper.o erasure.o validate.o suspect_leader.o \
 	reliable_broadcast.o view_change.o catchup.o proactive_recovery.o \
-	merkle.o recon.o tc_wrapper.o $(WRAPPER_OBJ)
+	merkle.o recon.o tc_wrapper.o parser.o key_generation.o $(WRAPPER_OBJ)
 
 CM_OBJ=config_manager.o parser.o key_generation.o data_structs.o utility.o network.o pre_order.o \
         util_dll.o packets.o nm_process.o process.o order.o \
@@ -87,7 +88,7 @@ CA_OBJ=config_agent.o key_generation.o parser.o data_structs.o utility.o network
 
 CD_OBJ=config_disseminator.o
 
-GEN_KEYS_OBJ =  generate_keys.o tc_wrapper.o data_structs.o utility.o network.o pre_order.o \
+GEN_KEYS_OBJ =  generate_keys.o tc_wrapper.o parser.o key_generation.o data_structs.o utility.o network.o pre_order.o \
         util_dll.o validate.o nm_process.o process.o packets.o order.o  \
         signature.o net_wrapper.o merkle.o suspect_leader.o proactive_recovery.o\
         reliable_broadcast.o view_change.o erasure.o recon.o  catchup.o $(WRAPPER_OBJ)
@@ -105,14 +106,14 @@ $(TC_LIB):
 	cd ../OpenTC-1.1/TC-lib-1.0/; ./configure; make
 
 gen_keys: $(GEN_KEYS_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/gen_keys $(GEN_KEYS_OBJ) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) $(STDUTIL_LIB) -lcrypto -ldl -lpthread -lrt
+	$(CC) $(LDFLAGS) -o ../bin/gen_keys $(GEN_KEYS_OBJ) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) $(STDUTIL_LIB) -lcrypto -ldl -lpthread -lrt -lcyaml
 
 prime: $(PRIME_OBJ)
-	$(CC) $(LDFLAGS) $(CPPFLAGS) -o ../bin/prime $(PRIME_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt
+	$(CC) $(LDFLAGS) $(CPPFLAGS) -o ../bin/prime $(PRIME_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
 
 
 driver: $(DRIVER_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/driver $(DRIVER_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt
+	$(CC) $(LDFLAGS) -o ../bin/driver $(DRIVER_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
 
 config_manager:  $(CM_OBJ)
 	 $(CC) $(LDFLAGS) -o ../bin/config_manager $(CM_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml

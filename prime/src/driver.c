@@ -62,7 +62,7 @@
 #include "net_wrapper.h"
 #include "merkle.h"
 #include "spines_lib.h"
-
+#include "parser.h"
 /* The behavior of the client can be controlled with parameters that follow */
 
 /* A single client process can be made to act like several clients by
@@ -139,6 +139,8 @@ double Min_PO_Time, Max_PO_Time;
 /* FILE *fp; */
 struct sockaddr_un Conn;
 
+struct config *cfg;
+
 void clean_exit(int signum)
 {
   Alarm(PRINT, "Received signal %d\n", signum);
@@ -170,7 +172,15 @@ int main(int argc, char** argv)
   Init_Client_Network();
   
   OPENSSL_RSA_Init();
-  OPENSSL_RSA_Read_Keys( My_Client_ID, RSA_CLIENT,"./keys" ); 
+  // using old function
+  // OPENSSL_RSA_Read_Keys( My_Client_ID, RSA_CLIENT,"./keys" ); 
+
+  cfg = load_yaml_config("received_configs/conf.yaml");
+  if (cfg == NULL)
+  {
+      Alarm(EXIT, "Failed to parse config file.\n");
+  }
+  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, &cfg);
   
   /* sprintf(buf, "latencies/client_%d.lat", My_Client_ID);
   fp = fopen(buf, "w"); */
@@ -853,7 +863,8 @@ void Config_Recv(channel sk, int dummy, void *dummy_p){
    }else{
 	My_Server_Alive=1;
    } 
-  OPENSSL_RSA_Read_Keys( My_Client_ID, RSA_CLIENT,"/tmp/test_keys/prime" );
+  // OPENSSL_RSA_Read_Keys( My_Client_ID, RSA_CLIENT,"/tmp/test_keys/prime" );
+  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, &cfg);
   time_stamp=0;
   num_outstanding_updates = 0;
   }

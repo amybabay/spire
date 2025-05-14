@@ -14,7 +14,13 @@
 #define SM_TC_DIR "tc_keys/sm/"
 #define PRIME_TC_DIR "tc_keys/prime/"
 
-// Helper to ensure a directory exists
+/**
+ * Create the directory at the given path if it doesn't exist.
+ *
+ * Checks if the specified directory exists. If not, attempts to create it.
+ *
+ * @param path Path to the directory.
+ */
 void ensure_directory(const char *path)
 {
     struct stat st = {0};
@@ -27,7 +33,15 @@ void ensure_directory(const char *path)
     }
 }
 
-// Helper to read the share files from TC_with_args_generate
+/**
+ * Reads the entire contents of a file into a null-terminated string.
+ *
+ * Opens the file at the given path, reads its contents into a newly allocated
+ * buffer, and null-terminates it. The caller is responsible for freeing the buffer.
+ *
+ * @param filepath Path to the file to read.
+ * @return Pointer to the allocated string, or NULL on failure.
+ */
 char *read_file_as_string(const char *filepath)
 {
     FILE *fp = fopen(filepath, "r");
@@ -52,9 +66,16 @@ char *read_file_as_string(const char *filepath)
 }
 
 /**
- *	First pass: Generate a simulated TPM key for the host
+ * Generates and stores a simulated TPM RSA key pair for a given host.
+ *
+ * Creates a 3072-bit RSA key pair to simulate a TPM key. Writes the private key
+ * to a PEM file named after the host in a fixed TPM key directory. Stores the
+ * public key and private key file path in the host's config fields.
+ *
+ * @param host Pointer to the host struct to update with key paths and public key.
+ *
+ * @note On failure, logs an error and skips setting the relevant fields. Additionally, this is part of the 'first pass' meaning it is only used for testing and simulation purposes.
  */
-
 void generate_simulated_tpm_key_for_host(struct host *host)
 {
     char private_key_filepath[512];
@@ -114,24 +135,17 @@ void generate_simulated_tpm_key_for_host(struct host *host)
 
 /* Second pass: Generate all keys using the permanent public key */
 
-// Generate SM threshold key shares in tc_keys/sm/
-void generate_sm_tc_keys(int req_shares, int faults, int rej_servers)
-{
-    ensure_directory("tc_keys");
-    ensure_directory("tc_keys/sm");
-
-    TC_with_args_Generate(req_shares, "tc_keys/sm", faults, rej_servers, 1);
-}
-
-// Generate Prime threshold key shares in tc_keys/prime/
-void generate_prime_tc_keys(int req_shares, int faults, int rej_servers)
-{
-    ensure_directory("tc_keys");
-    ensure_directory("tc_keys/prime");
-
-    TC_with_args_Generate(req_shares, "tc_keys/prime", faults, rej_servers, 1);
-}
-
+/**
+ * Generates threshold cryptography key shares for all sites.
+ *
+ * For each site, generates separate sets of threshold keys for both
+ * Scada Masters and Prime replicas, and writes them to appropriate directories.
+ *
+ * @param req_shares   Number of shares to generate per site.
+ * @param faults       Maximum number of tolerated faults (f).
+ * @param rej_servers  Number of servers allowed to reject messages (k).
+ * @param num_sites    Number of sites to generate keys for.
+ */
 void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers, int num_sites)
 {
     int n = 3 * faults + 2 * rej_servers + 1;
@@ -150,7 +164,16 @@ void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers, int 
     }
 }
 
-// Loads threshold pubkeys from disk and
+/**
+ * Loads threshold public keys for Scada Master and Prime into config.
+ *
+ * Reads the SM and Prime threshold public key files (assumed to be named `pubkey_1.pem`)
+ * from their respective directories and stores the contents as strings in the config.
+ *
+ * @param cfg Pointer to the config structure to populate.
+ *
+ * @note Exits the program if either key file fails to load.
+ */
 void load_threshold_pubkeys(struct config *cfg)
 {
     char sm_pubkey_path[256];
@@ -169,6 +192,19 @@ void load_threshold_pubkeys(struct config *cfg)
         exit(EXIT_FAILURE);
     }
 }
+
+/**
+ * Generates and encrypts internal and external RSA key pairs for a host.
+ *
+ * Uses the host's TPM public key to hybrid-encrypt newly generated 2048-bit RSA
+ * private keys for internal and external use. Stores the public keys and encrypted
+ * private keys in the host struct.
+ *
+ * @param host Pointer to the host structure to populate with key material.
+ *
+ * @note Requires host->permanent_public_key to be set with a PEM-encoded key.
+ *       Logs errors and returns early on failure.
+ */
 void generate_keys_for_host(struct host *host)
 {
     if (!host->permanent_public_key)
@@ -237,6 +273,22 @@ void generate_keys_for_host(struct host *host)
     EVP_PKEY_free(tpm_pubkey);
 }
 
+/**
+ * Generates and encrypts keys and threshold shares for a replica.
+ *
+ * Creates a 2048-bit RSA key pair for the replica instance and hybrid-encrypts
+ * the private key using the host's TPM public key. Also reads the replica's
+ * Prime and Scada Master threshold key shares from disk and encrypts them.
+ *
+ * The encrypted keys and public key are stored in the replica struct.
+ *
+ * @param replica Pointer to the replica struct to populate.
+ * @param host Pointer to the host struct containing the TPM public key.
+ * @param site_index Zero-based index of the site this replica belongs to.
+ * @param replica_index_within_site Index of the replica within the site (used to locate its share file).
+ *
+ * @note Exits early and logs errors if key generation, public key loading, or share file reading fails.
+ */
 void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index, unsigned replica_index_within_site)
 {
     if (!host->permanent_public_key)
@@ -321,6 +373,64 @@ void generate_keys_for_replica(struct replica *replica, struct host *host, unsig
     EVP_PKEY_free(tpm_pubkey);
 }
 
+/**
+ * Generates an RSA key pair for a client and encrypts the private key using the host's TPM public key.
+ *
+ * @param client Pointer to the client struct to populate with keys.
+ * @param host Pointer to the host struct containing the TPM public key.
+ */
+void generate_keys_for_client(struct client *client, struct host *host)
+{
+    if (!host || !host->permanent_public_key)
+    {
+        fprintf(stderr, "Error: TPM public key missing for host %s (client %u)\n", host ? host->name : "NULL", client->client_id);
+        return;
+    }
+
+    EVP_PKEY *tpm_pubkey = load_public_key_from_pem(host->permanent_public_key);
+    if (!tpm_pubkey)
+    {
+        fprintf(stderr, "Error: Failed to load TPM public key for host %s (client %u)\n", host->name, client->client_id);
+        return;
+    }
+
+    EVP_PKEY *client_key = generate_rsa_key(2048);
+    if (!client_key)
+    {
+        fprintf(stderr, "Error: Failed to generate RSA key for client %u\n", client->client_id);
+        EVP_PKEY_free(tpm_pubkey);
+        return;
+    }
+
+    client->instance_public_key = get_public_key(client_key);
+    char *client_priv_pem = get_private_key(client_key);
+
+    struct HybridEncrypted enc = hybrid_encrypt(
+        (unsigned char *)client_priv_pem,
+        strlen(client_priv_pem),
+        tpm_pubkey);
+
+    client->encrypted_instance_private_key = hybrid_pack(&enc);
+
+    // Cleanup
+    free(client_priv_pem);
+    free(enc.ciphertext_hex);
+    free(enc.enc_key_hex);
+    free_rsa_key(client_key);
+    EVP_PKEY_free(tpm_pubkey);
+}
+
+/**
+ * Generates simulated TPM key pairs for all hosts in the configuration.
+ *
+ * Iterates through all sites and hosts in the config, generating a simulated
+ * 3072-bit TPM RSA key pair for each host and storing the public key and key path.
+ *
+ * @param cfg Pointer to the parsed configuration structure containing sites and hosts.
+ *
+ * @note This should be run before generating or encrypting any other keys that
+ * depend on the TPM public key. Part of the first pass.
+ */
 void first_pass_generate_tpm_keys(struct config *cfg)
 {
     for (unsigned i = 0; i < cfg->sites_count; i++)
@@ -334,17 +444,31 @@ void first_pass_generate_tpm_keys(struct config *cfg)
     }
 }
 
+/**
+ * Generates and encrypts all internal, external, and replica-specific keys.
+ *
+ * For each host in the config, generates internal and external RSA key pairs and
+ * encrypts them with the host's TPM public key. For each replica, generates an RSA
+ * key pair and encrypts associated threshold shares using its host's TPM key.
+ *
+ * @param cfg Pointer to the configuration structure containing all sites, hosts, and replicas.
+ *
+ * @note Assumes that TPM keys have already been generated and assigned in a prior pass.
+ *       Logs an error if a replica's assigned host cannot be found.
+ */
 void second_pass_generate_keys(struct config *cfg)
 {
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
         struct site *site = &cfg->sites[i];
 
+        // Handle hosts
         for (unsigned j = 0; j < site->hosts_count; j++)
         {
             generate_keys_for_host(&site->hosts[j]);
         }
 
+        // Handle replicas
         for (unsigned j = 0; j < site->replicas_count; j++)
         {
             struct replica *replica = &site->replicas[j];
@@ -359,9 +483,38 @@ void second_pass_generate_keys(struct config *cfg)
                 fprintf(stderr, "Error: Replica %d has no matching host %s!\n", replica->instance_id, replica->host);
             }
         }
+
+        // Handle clients
+        for (unsigned j = 0; j < site->clients_count; j++)
+        {
+            struct client *client = &site->clients[j];
+            struct host *client_host = find_host_for_replica(site, client->host);
+
+            if (client_host)
+            {
+                generate_keys_for_client(client, client_host);
+            }
+            else
+            {
+                fprintf(stderr, "Error: Client %u references unknown host %s\n", client->client_id, client->host);
+            }
+        }
     }
 }
 
+/**
+ * Loads the raw YAML configuration processes it, performing all key generation and processing steps.
+ *
+ * This function orchestrates the full cryptographic setup:
+ * 1. Loads the configuration from a YAML file.
+ * 2. Generates simulated TPM keys for all hosts.
+ * 3. Generates threshold cryptography key shares for all sites.
+ * 4. Loads shared threshold public keys into the config.
+ * 5. Generates and encrypts internal, external, and replica-specific keys.
+ *
+ * @param input_yaml Path to the YAML configuration file.
+ * @return Pointer to the fully initialized and populated config, or NULL on failure.
+ */
 struct config *load_and_process_config(const char *input_yaml)
 {
     struct config *cfg = load_yaml_config(input_yaml);
@@ -381,6 +534,16 @@ struct config *load_and_process_config(const char *input_yaml)
     return cfg;
 }
 
+/**
+ * Loads the Config Manager's RSA key pair from disk.
+ *
+ * Reads the private and public keys from predefined PEM files in the `cm_keys/` directory
+ * and stores them in the provided pointers.
+ *
+ * @param priv_key Output pointer for the loaded private key.
+ * @param pub_key Output pointer for the loaded public key.
+ * @return 0 on success, -1 on failure.
+ */
 int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
 {
     *priv_key = load_key_from_file("cm_keys/private_key.pem", 1);
@@ -388,13 +551,25 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
     return (*priv_key && *pub_key) ? 0 : -1;
 }
 
-int main(int argc, char *argv[])
+static void Print_Usage(void)
+{
+    fprintf(stderr, "Usage: ./config_generator <input_yaml> <output_yaml>\n"
+                    "  <input_yaml>   : Path to YAML file describing the system configuration\n"
+                    "  <output_yaml>  : Output binary file containing signed configuration\n");
+    exit(EXIT_FAILURE);
+}
+
+static void Usage(int argc, char **argv)
 {
     if (argc != 3)
     {
-        fprintf(stderr, "Usage: %s <input_yaml> <output_yaml>\n", argv[0]);
-        return EXIT_FAILURE;
+        Print_Usage();
     }
+}
+
+int main(int argc, char *argv[])
+{
+    Usage(argc, argv);
 
     struct config *cfg = NULL;
     EVP_PKEY *cm_priv = NULL, *cm_pub = NULL;

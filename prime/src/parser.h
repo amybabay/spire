@@ -49,6 +49,20 @@ struct replica
     char *unencrypted_sm_threshold_key_share;
 };
 
+struct client
+{
+    unsigned client_id;
+    const char *host;
+    const char *spines_external_daemon;
+    const char *type;
+
+    // Optional future fields
+    const char *instance_public_key;
+    const char *encrypted_instance_private_key;
+
+    char *unencrypted_instance_private_key;
+};
+
 struct site
 {
     const char *name;
@@ -59,6 +73,9 @@ struct site
     // Optional: can be manually managed after parsing
     struct replica *replicas;
     unsigned replicas_count;
+
+    struct client *clients; 
+    unsigned clients_count; 
 };
 
 struct service_keys

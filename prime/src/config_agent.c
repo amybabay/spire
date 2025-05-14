@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <time.h>
 #include <ifaddrs.h>
+#include <dirent.h>
 
 #include "spu_alarm.h"
 #include "spu_events.h"
@@ -74,7 +75,7 @@ void Cleanup_Fragments(void);
 
 void generate_spines_topologies(const struct config *cfg);
 char *get_my_ip(void);
-void decrypt_private_keys(struct config *cfg, const char *my_ip);
+// void decrypt_private_keys(struct config *cfg, const char *my_ip);
 
 int main(int argc, char **argv)
 {
@@ -240,7 +241,21 @@ static void Handle_Conf_Message(int s, int source, void *dummy)
     }
 }
 
-// reassembles fragments into one buffer
+/**
+ * Reassembles received configuration fragments into a single contiguous buffer.
+ *
+ * Iterates over all received fragments and concatenates their payloads in order into
+ * a newly allocated buffer. The caller receives both the pointer to the assembled
+ * buffer and its total length.
+ *
+ * @param[out] out_buf Pointer to the output buffer (must be freed by the caller).
+ * @param[out] out_len Pointer to the size of the assembled buffer.
+ *
+ * @return 0 on success,
+ *        -1 if input state is invalid or uninitialized,
+ *        -2 if any fragment is missing,
+ *        -3 if memory allocation fails.
+ */
 int Assemble_Config_Buffer(char **out_buf, size_t *out_len)
 {
     if (!fragment_data || !fragment_lens || expected_fragments <= 0)
@@ -270,7 +285,24 @@ int Assemble_Config_Buffer(char **out_buf, size_t *out_len)
     return 0;
 }
 
-// validates signature on config buffer
+/**
+ * Verifies the signature on a received configuration buffer.
+ *
+ * The buffer format is expected to be:
+ *   [4 bytes signature length][signature][YAML config data]
+ *
+ * This function extracts the signature and YAML data from the buffer, loads
+ * the Config Manager's public key from disk, and verifies the signature.
+ *
+ * @param buf Pointer to the full configuration buffer.
+ * @param len Total length of the buffer.
+ *
+ * @return  0 if the signature is valid,
+ *         -1 if the buffer is too short to contain a signature,
+ *         -2 if the buffer is too short to contain the declared signature length,
+ *         -3 if the public key could not be loaded,
+ *         -4 if the signature verification failed.
+ */
 int Verify_Config_Signature(const char *buf, size_t len)
 {
     if (len < sizeof(uint32_t))
@@ -295,7 +327,23 @@ int Verify_Config_Signature(const char *buf, size_t len)
     return valid == 0 ? 0 : -4;
 }
 
-// loads, saves, and processes a verified yaml config
+/**
+ * Parses, processes, and saves a verified YAML configuration buffer.
+ *
+ * Extracts the YAML portion from a signed buffer (after the signature), parses it
+ * into a config structure, generates Spines topology files, decrypts private keys
+ * for the current host, and saves the YAML to a timestamped file under
+ * `received_configs/`.
+ *
+ * @param buf Pointer to the full signed buffer (signature + YAML config).
+ * @param len Length of the full buffer in bytes.
+ *
+ * @return  0 on success,
+ *         -1 if the YAML parsing fails.
+ *
+ * @note Assumes signature has already been verified. Relies on global `Conf_ID`
+ *       to name the saved config file, rather than the configuration_id field in the YAML.
+ */
 int Handle_Verified_Config(const char *buf, size_t len)
 {
     uint32_t sig_len;
@@ -309,8 +357,9 @@ int Handle_Verified_Config(const char *buf, size_t len)
 
     generate_spines_topologies(cfg);
     char *my_ip = get_my_ip();
-    decrypt_private_keys(cfg, my_ip);
+    // decrypt_private_keys(cfg, my_ip);
     free(my_ip);
+    kill_all_components();
 
     const char *dir = "received_configs";
     struct stat st = {0};
@@ -410,7 +459,17 @@ static void Print_Usage(void)
           DEFAULT_SPINES_ADDR, DEFAULT_SPINES_PORT);
 }
 
-// determines if an ip is already in a DaemonEntry list
+/**
+ * Checks if an IP address already exists in a list of DaemonEntry structs.
+ *
+ * Iterates through the list and compares the given IP against each entry.
+ *
+ * @param ip     The IP address to search for.
+ * @param list   Array of DaemonEntry structs.
+ * @param count  Number of entries in the list.
+ *
+ * @return 1 if the IP is found, 0 otherwise.
+ */
 static int ip_in_list(const char *ip, DaemonEntry *list, size_t count)
 {
     for (size_t i = 0; i < count; i++)
@@ -421,7 +480,15 @@ static int ip_in_list(const char *ip, DaemonEntry *list, size_t count)
     return 0;
 }
 
-// Appends a DaemonEntry to a DaemonEntry list
+/**
+ * Appends a new DaemonEntry to the list if the IP is not already present.
+ *
+ * Assigns a new ID based on the current count and increments the count.
+ *
+ * @param list   Array of DaemonEntry structs to append to.
+ * @param count  Pointer to the current number of entries (updated on append).
+ * @param ip     The IP address to add.
+ */
 static void append_daemon(DaemonEntry *list, size_t *count, const char *ip)
 {
     if (!ip_in_list(ip, list, *count))
@@ -432,6 +499,18 @@ static void append_daemon(DaemonEntry *list, size_t *count, const char *ip)
     }
 }
 
+/**
+ * Writes a Spines topology file with host and edge definitions.
+ *
+ * Copies the base configuration into the output file, then appends:
+ * - A Hosts section with assigned IDs and IPs.
+ * - An Edges section forming a full mesh between all hosts.
+ *
+ * @param output_path Path to the output `.conf` file to write.
+ * @param hosts       Array of DaemonEntry structs containing IPs and IDs.
+ * @param host_count  Number of host entries in the array.
+ * @param base_fp     File pointer to the base configuration template.
+ */
 static void write_topology_file(const char *output_path, DaemonEntry *hosts, size_t host_count, FILE *base_fp)
 {
     FILE *out = fopen(output_path, "w");
@@ -472,29 +551,22 @@ static void write_topology_file(const char *output_path, DaemonEntry *hosts, siz
 }
 
 /**
- * Generates two Spines topology configuration files (`spines_int.conf` and `spines_ext.conf`)
- * based on the parsed YAML configuration structure. The function creates:
+ * Generates Spines topology configuration files for internal and external communication.
  *
- *   - Internal topology (spines_int.conf): A full mesh of hosts marked with `runs_spines_internal`.
- *   - External topology (spines_ext.conf): A full mesh of replica hosts, with each replica also
- *     connected to all client hosts that run `spines_external` in client-type sites.
+ * This function creates two topology files:
+ *   - `spines_int.conf`: A full mesh network of hosts running internal Spines daemons.
+ *   - `spines_ext.conf`: A full mesh of replica hosts running external Spines daemons, plus connections
+ *                        from each replica to all external client hosts in client-type sites.
  *
- * Each topology file is built by copying from a shared base configuration file (`base_spines.conf`),
- * then appending a `Hosts {}` and `Edges {}` section that defines node IDs and connectivity.
+ * It deduplicates hosts by IP and assigns each one a unique ID. The topology files are generated
+ * by copying a base configuration (`base_spines.conf`) and appending `Hosts {}` and `Edges {}` sections.
  *
- * Parameters:
- *   cfg - Pointer to the in-memory configuration struct.
+ * @param cfg Pointer to the loaded system configuration.
  *
- * Output:
- *   Writes two files to the current directory:
- *     - spines_int.conf
- *     - spines_ext.conf
- *     - does not write spines_ctrl.conf
- *
- * Notes:
- *   - Host entries are deduplicated by IP.
- *   - Replica host lookups are performed using `find_host_for_replica`.
- *   - Host and edge IDs start at 1.
+ * @note Output files are:
+ *   - `spines_int.conf` written to the current directory.
+ *   - `spines_ext.conf` written to the current directory.
+ * 
  */
 void generate_spines_topologies(const struct config *cfg)
 {
@@ -592,6 +664,15 @@ void generate_spines_topologies(const struct config *cfg)
     fclose(out);
 }
 
+/**
+ * Retrieves the first non-loopback IPv4 address of the current host.
+ *
+ * Iterates over the system's network interfaces and returns the first non-loopback
+ * IPv4 address as a newly allocated string.
+ *
+ * @return A malloc'ed string containing the IP address, or NULL on failure.
+ *         The caller is responsible for freeing the returned string.
+ */
 char *get_my_ip()
 {
     struct ifaddrs *ifaddr, *ifa;
@@ -617,6 +698,16 @@ char *get_my_ip()
     return ip;
 }
 
+/**
+ * Finds the host entry in the config that matches the given IP address.
+ *
+ * Searches all sites and their hosts for a host whose `ip` field matches `my_ip`.
+ *
+ * @param cfg    Pointer to the loaded configuration structure.
+ * @param my_ip  The IP address to search for (as returned by get_my_ip()).
+ *
+ * @return Pointer to the matching host struct, or NULL if not found.
+ */
 static struct host *find_my_host(struct config *cfg, const char *my_ip)
 {
     for (unsigned i = 0; i < cfg->sites_count; i++)
@@ -632,97 +723,106 @@ static struct host *find_my_host(struct config *cfg, const char *my_ip)
     return NULL;
 }
 
-void decrypt_private_keys(struct config *cfg, const char *my_ip)
-{
-    struct host *my_host = find_my_host(cfg, my_ip);
-    if (!my_host)
-    {
-        Alarm(PRINT, "Cannot find host matching IP: %s\n", my_ip);
-        return;
-    }
-    printf("[DEBUG] I am host: %s (IP: %s), TPM key at: %s\n", my_host->name, my_ip, my_host->permanent_key_location);
+// void decrypt_private_keys(struct config *cfg, const char *my_ip)
+// {
+//     struct host *my_host = find_my_host(cfg, my_ip);
+//     if (!my_host)
+//     {
+//         Alarm(PRINT, "Cannot find host matching IP: %s\n", my_ip);
+//         return;
+//     }
+//     printf("[DEBUG] I am host: %s (IP: %s), TPM key at: %s\n", my_host->name, my_ip, my_host->permanent_key_location);
 
-    EVP_PKEY *tpm_priv = load_key_from_file(my_host->permanent_key_location, 1);
-    if (!tpm_priv)
-    {
-        Alarm(PRINT, "Failed to load TPM private key for my host\n");
-        return;
-    }
+//     EVP_PKEY *tpm_priv = load_key_from_file(my_host->permanent_key_location, 1);
+//     if (!tpm_priv)
+//     {
+//         Alarm(PRINT, "Failed to load TPM private key for my host\n");
+//         return;
+//     }
 
-    // Decrypt my spines internal key
-    if (my_host->encrypted_spines_internal_private_key)
-    {
-        char *enc_key_hex, *ciphertext_hex;
-        hybrid_unpack(my_host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
-        struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-        my_host->unencrypted_spines_internal_private_key = dec.plaintext;
-        free(enc_key_hex);
-        free(ciphertext_hex);
-        printf("\n[Internal Spines Private Key]:\n%s\n", dec.plaintext);
-    }
+//     // Decrypt my spines internal key
+//     if (my_host->encrypted_spines_internal_private_key)
+//     {
+//         char *enc_key_hex, *ciphertext_hex;
+//         hybrid_unpack(my_host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
+//         struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+//         my_host->unencrypted_spines_internal_private_key = dec.plaintext;
+//         free(enc_key_hex);
+//         free(ciphertext_hex);
+//         printf("\n[Internal Spines Private Key]:\n%s\n", dec.plaintext);
+//     }
 
-    // Decrypt my spines external key
-    if (my_host->encrypted_spines_external_private_key)
-    {
-        char *enc_key_hex, *ciphertext_hex;
-        hybrid_unpack(my_host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
-        struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-        my_host->unencrypted_spines_external_private_key = dec.plaintext;
-        free(enc_key_hex);
-        free(ciphertext_hex);
-        printf("\n[External Spines Private Key]:\n%s\n", my_host->unencrypted_spines_external_private_key);
-    }
+//     // Decrypt my spines external key
+//     if (my_host->encrypted_spines_external_private_key)
+//     {
+//         char *enc_key_hex, *ciphertext_hex;
+//         hybrid_unpack(my_host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
+//         struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+//         my_host->unencrypted_spines_external_private_key = dec.plaintext;
+//         free(enc_key_hex);
+//         free(ciphertext_hex);
+//         printf("\n[External Spines Private Key]:\n%s\n", my_host->unencrypted_spines_external_private_key);
+//     }
 
-    // Decrypt replicas assigned to my_host
-    for (unsigned i = 0; i < cfg->sites_count; i++)
-    {
-        struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->replicas_count; j++)
-        {
-            struct replica *rep = &site->replicas[j];
-            struct host *rep_host = find_host_for_replica(site, rep->host);
+//     // Decrypt replicas assigned to my_host
+//     for (unsigned i = 0; i < cfg->sites_count; i++)
+//     {
+//         struct site *site = &cfg->sites[i];
+//         for (unsigned j = 0; j < site->replicas_count; j++)
+//         {
+//             struct replica *rep = &site->replicas[j];
+//             struct host *rep_host = find_host_for_replica(site, rep->host);
 
-            if (rep_host == my_host)
-            {
-                if (rep->encrypted_instance_private_key)
-                {
-                    char *enc_key_hex, *ciphertext_hex;
-                    hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
-                    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-                    rep->unencrypted_instance_private_key = dec.plaintext;
-                    free(enc_key_hex);
-                    free(ciphertext_hex);
-                    printf("\n[Instance Private Key] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_instance_private_key);
-                }
+//             if (rep_host == my_host)
+//             {
+//                 if (rep->encrypted_instance_private_key)
+//                 {
+//                     char *enc_key_hex, *ciphertext_hex;
+//                     hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
+//                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+//                     rep->unencrypted_instance_private_key = dec.plaintext;
+//                     free(enc_key_hex);
+//                     free(ciphertext_hex);
+//                     printf("\n[Instance Private Key] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_instance_private_key);
+//                 }
 
-                if (rep->encrypted_prime_threshold_key_share)
-                {
-                    char *enc_key_hex, *ciphertext_hex;
-                    hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
-                    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-                    rep->unencrypted_prime_threshold_key_share = dec.plaintext;
-                    free(enc_key_hex);
-                    free(ciphertext_hex);
-                    printf("\n[Prime Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_prime_threshold_key_share);
-                }
+//                 if (rep->encrypted_prime_threshold_key_share)
+//                 {
+//                     char *enc_key_hex, *ciphertext_hex;
+//                     hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+//                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+//                     rep->unencrypted_prime_threshold_key_share = dec.plaintext;
+//                     free(enc_key_hex);
+//                     free(ciphertext_hex);
+//                     printf("\n[Prime Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_prime_threshold_key_share);
+//                 }
 
-                if (rep->encrypted_sm_threshold_key_share)
-                {
-                    char *enc_key_hex, *ciphertext_hex;
-                    hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
-                    struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-                    rep->unencrypted_sm_threshold_key_share = dec.plaintext;
-                    free(enc_key_hex);
-                    free(ciphertext_hex);
-                    printf("\n[SM Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_sm_threshold_key_share);
-                }
-            }
-        }
-    }
+//                 if (rep->encrypted_sm_threshold_key_share)
+//                 {
+//                     char *enc_key_hex, *ciphertext_hex;
+//                     hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
+//                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
+//                     rep->unencrypted_sm_threshold_key_share = dec.plaintext;
+//                     free(enc_key_hex);
+//                     free(ciphertext_hex);
+//                     printf("\n[SM Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_sm_threshold_key_share);
+//                 }
+//             }
+//         }
+//     }
 
-    EVP_PKEY_free(tpm_priv);
-}
+//     EVP_PKEY_free(tpm_priv);
+// }
 
+/**
+ * Checks if a process name matches a known component (spines, prime, or scada_master).
+ *
+ * Compares the given process name against a predefined list of target component names.
+ *
+ * @param name Name of the process (as read from /proc/<pid>/comm).
+ *
+ * @return 1 if the name matches a target process, 0 otherwise.
+ */
 int is_target_process(const char *name)
 {
     const char *targets[] = {"spines", "prime", "scada_master"};
@@ -738,7 +838,12 @@ int is_target_process(const char *name)
 }
 
 /**
- * Scans all running processes and sends SIGKILL to spines, scada_master, and prime proceses
+ * Scans all running processes and forcibly terminates known system components.
+ *
+ * Iterates over all entries in `/proc`, identifies processes whose names match
+ * known component names (`spines`, `prime`, `scada_master`), and sends them `SIGKILL`.
+ *
+ * @return Number of processes successfully killed, or -1 on failure to open /proc.
  */
 int kill_all_components()
 {
@@ -768,12 +873,12 @@ int kill_all_components()
         char comm_path[64];
         snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
 
-        // Open the file to read the process name
+        // open the file to read the process name
         FILE *comm_file = fopen(comm_path, "r");
         if (!comm_file)
             continue; // couldnt open
 
-        char comm[MAX_COMM_LEN];
+        char comm[256];
         if (fgets(comm, sizeof(comm), comm_file))
         {
             // rm newline
