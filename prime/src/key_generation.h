@@ -41,17 +41,14 @@ unsigned char *hex_decode(const char *hexstr, size_t *out_len);
 /* Key Generation */
 EVP_PKEY *generate_rsa_key(int bits);
 char *generate_and_get_public_key(int bits);
-char *generate_and_get_encrypted_private_key(int bits, const char *passphrase);
 
 /* PEM Export */
 char *get_public_key(EVP_PKEY *pkey);
 char *get_private_key(EVP_PKEY *pkey);
-char *get_encrypted_private_key(EVP_PKEY *pkey, const char *passphrase);
 void free_rsa_key(EVP_PKEY *pkey);
 
 /* File IO */
 int write_key_to_file(const char *filename, const char *key);
-unsigned char *read_file(const char *filename, size_t *length);
 
 /* Signing and Verifying */
 Signature sign_buffer(const unsigned char *data, size_t data_len, EVP_PKEY *priv_key);
@@ -72,11 +69,16 @@ unsigned char *rsa_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY 
 unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
                            EVP_PKEY *private_key, size_t *out_len);
 
-void decrypt_all_private_keys(struct config *cfg);
-
 /* PEM Key Loading */
 EVP_PKEY *load_public_key_from_pem(const char *pem_str);
 EVP_PKEY *load_key_from_file(const char *filepath, int is_private);
 
+EVP_PKEY *load_decrypted_key(const char *packed, EVP_PKEY *rsa_privkey);
+
+// UNUSED FOR NOW
+// char *get_encrypted_private_key(EVP_PKEY *pkey, const char *passphrase);
+// char *generate_and_get_encrypted_private_key(int bits, const char *passphrase);
+// unsigned char *read_file(const char *filename, size_t *length);
+// void decrypt_all_private_keys(struct config *cfg);
 
 #endif // KEY_GENERATION_H

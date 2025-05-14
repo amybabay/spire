@@ -82,21 +82,13 @@ struct config
 };
 
 struct config *load_yaml_config(const char *yaml_file);
-int save_yaml_config(const char *yaml_file, struct config *cfg);
 char *serialize_yaml_config_to_string(const struct config *cfg, size_t *out_len);
 struct config *load_yaml_config_from_string(const char *yaml_str, size_t yaml_len);
 void free_yaml_config(struct config **cfg);
 struct host *find_host_for_replica(struct site *site, const char *host_name);
 
-
-// Function(s) for generating topology
+// UNUSED
+// int save_yaml_config(const char *yaml_file, struct config *cfg);
 // int generate_topology(struct config *cfg);
-
-// Functions for printing the yaml
-void print_service_keys(const struct service_keys *keys, int indent);
-void print_host(const struct host *h, int indent);
-void print_replica(const struct replica *r, int indent);
-void print_site(const struct site *s, int indent);
-void print_config(const struct config *cfg);
 
 #endif // PARSER_H

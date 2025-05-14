@@ -10,7 +10,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
-#include <ifaddrs.h>  
+#include <ifaddrs.h>
 
 #include "spu_alarm.h"
 #include "spu_events.h"
@@ -19,7 +19,6 @@
 #include "parser.h"
 #include "key_generation.h"
 #include "def.h"
-
 
 #define MAX_DAEMONS 256
 #define BASE_SPINES_CONFIG "base_spines.conf"
@@ -76,7 +75,6 @@ void Cleanup_Fragments(void);
 void generate_spines_topologies(const struct config *cfg);
 char *get_my_ip(void);
 void decrypt_private_keys(struct config *cfg, const char *my_ip);
-
 
 int main(int argc, char **argv)
 {
@@ -313,7 +311,6 @@ int Handle_Verified_Config(const char *buf, size_t len)
     char *my_ip = get_my_ip();
     decrypt_private_keys(cfg, my_ip);
     free(my_ip);
-
 
     const char *dir = "received_configs";
     struct stat st = {0};
@@ -595,7 +592,6 @@ void generate_spines_topologies(const struct config *cfg)
     fclose(out);
 }
 
-
 char *get_my_ip()
 {
     struct ifaddrs *ifaddr, *ifa;
@@ -623,9 +619,11 @@ char *get_my_ip()
 
 static struct host *find_my_host(struct config *cfg, const char *my_ip)
 {
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->hosts_count; j++) {
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
             struct host *h = &site->hosts[j];
             if (strcmp(h->ip, my_ip) == 0)
                 return h;
@@ -637,20 +635,23 @@ static struct host *find_my_host(struct config *cfg, const char *my_ip)
 void decrypt_private_keys(struct config *cfg, const char *my_ip)
 {
     struct host *my_host = find_my_host(cfg, my_ip);
-    if (!my_host) {
+    if (!my_host)
+    {
         Alarm(PRINT, "Cannot find host matching IP: %s\n", my_ip);
         return;
     }
     printf("[DEBUG] I am host: %s (IP: %s), TPM key at: %s\n", my_host->name, my_ip, my_host->permanent_key_location);
 
     EVP_PKEY *tpm_priv = load_key_from_file(my_host->permanent_key_location, 1);
-    if (!tpm_priv) {
+    if (!tpm_priv)
+    {
         Alarm(PRINT, "Failed to load TPM private key for my host\n");
         return;
     }
 
     // Decrypt my spines internal key
-    if (my_host->encrypted_spines_internal_private_key) {
+    if (my_host->encrypted_spines_internal_private_key)
+    {
         char *enc_key_hex, *ciphertext_hex;
         hybrid_unpack(my_host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
         struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
@@ -661,7 +662,8 @@ void decrypt_private_keys(struct config *cfg, const char *my_ip)
     }
 
     // Decrypt my spines external key
-    if (my_host->encrypted_spines_external_private_key) {
+    if (my_host->encrypted_spines_external_private_key)
+    {
         char *enc_key_hex, *ciphertext_hex;
         hybrid_unpack(my_host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
         struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
@@ -672,14 +674,18 @@ void decrypt_private_keys(struct config *cfg, const char *my_ip)
     }
 
     // Decrypt replicas assigned to my_host
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->replicas_count; j++) {
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
             struct replica *rep = &site->replicas[j];
             struct host *rep_host = find_host_for_replica(site, rep->host);
 
-            if (rep_host == my_host) {
-                if (rep->encrypted_instance_private_key) {
+            if (rep_host == my_host)
+            {
+                if (rep->encrypted_instance_private_key)
+                {
                     char *enc_key_hex, *ciphertext_hex;
                     hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
@@ -689,7 +695,8 @@ void decrypt_private_keys(struct config *cfg, const char *my_ip)
                     printf("\n[Instance Private Key] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_instance_private_key);
                 }
 
-                if (rep->encrypted_prime_threshold_key_share) {
+                if (rep->encrypted_prime_threshold_key_share)
+                {
                     char *enc_key_hex, *ciphertext_hex;
                     hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
@@ -699,7 +706,8 @@ void decrypt_private_keys(struct config *cfg, const char *my_ip)
                     printf("\n[Prime Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_prime_threshold_key_share);
                 }
 
-                if (rep->encrypted_sm_threshold_key_share) {
+                if (rep->encrypted_sm_threshold_key_share)
+                {
                     char *enc_key_hex, *ciphertext_hex;
                     hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
@@ -713,4 +721,82 @@ void decrypt_private_keys(struct config *cfg, const char *my_ip)
     }
 
     EVP_PKEY_free(tpm_priv);
+}
+
+int is_target_process(const char *name)
+{
+    const char *targets[] = {"spines", "prime", "scada_master"};
+    const int num_targets = sizeof(targets) / sizeof(targets[0]);
+    for (int i = 0; i < num_targets; i++)
+    {
+        if (strcmp(name, targets[i]) == 0)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Scans all running processes and sends SIGKILL to spines, scada_master, and prime proceses
+ */
+int kill_all_components()
+{
+    DIR *proc_dir = opendir("/proc");
+    struct dirent *entry;
+    int killed = 0;
+
+    if (!proc_dir)
+    {
+        perror("opendir /proc");
+        return -1;
+    }
+
+    // iterate through all of proc
+    while ((entry = readdir(proc_dir)) != NULL)
+    {
+        // considering only directories (pids are dirs)
+        if (entry->d_type != DT_DIR)
+            continue;
+
+        // dir name to pid
+        pid_t pid = atoi(entry->d_name);
+        if (pid <= 0)
+            continue;
+
+        // construct a path
+        char comm_path[64];
+        snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
+
+        // Open the file to read the process name
+        FILE *comm_file = fopen(comm_path, "r");
+        if (!comm_file)
+            continue; // couldnt open
+
+        char comm[MAX_COMM_LEN];
+        if (fgets(comm, sizeof(comm), comm_file))
+        {
+            // rm newline
+            comm[strcspn(comm, "\n")] = 0;
+
+            // if is a target process
+            if (is_target_process(comm))
+            {
+                if (kill(pid, SIGKILL) == 0)
+                {
+                    printf("Killed %s (PID %d)\n", comm, pid);
+                    killed++;
+                }
+                else
+                {
+                    perror("kill");
+                }
+            }
+        }
+
+        fclose(comm_file); // close file
+    }
+
+    closedir(proc_dir); // close proc
+    return killed;      // return number of killed processes
 }
