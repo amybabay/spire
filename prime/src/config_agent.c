@@ -23,8 +23,8 @@
 
 #define MAX_DAEMONS 256
 #define BASE_SPINES_CONFIG "base_spines.conf"
-#define SPINES_INT_FILE "generated_spines_confs/spines_int.conf"
-#define SPINES_EXT_FILE "generated_spines_confs/spines_ext.conf"
+#define SPINES_INT_FILE "../../spines/daemon/spines_int.conf"
+#define SPINES_EXT_FILE "../../spines/daemon/spines_ext.conf"
 #define DEFAULT_SPINES_ADDR "127.0.0.1"
 #define DEFAULT_SPINES_PORT 8100
 
@@ -59,6 +59,7 @@ static int received_fragments = 0;
 static int expected_fragments = -1;
 
 static int32u Last_Seen_Conf_ID = 0;
+static char latest_config_path[512] = "received_configs/latest.yaml";
 
 static char Spines_Addr[32] = DEFAULT_SPINES_ADDR;
 static int Spines_Port = DEFAULT_SPINES_PORT;
@@ -120,6 +121,16 @@ static void Init_Network(void)
 
     Alarm(PRINT, "Config_Agent: Spines multicast network ready\n");
 }
+
+void Reconnect_Spines_Socket()
+{
+    E_detach_fd(Ctrl_Spines, READ_FD);
+    close(Ctrl_Spines);
+
+    Init_Network();  // re-creates the multicast socket and rejoins the group
+    E_attach_fd(Ctrl_Spines, READ_FD, Handle_Conf_Message, NULL, NULL, HIGH_PRIORITY);
+}
+
 
 static void Handle_Conf_Message(int s, int source, void *dummy)
 {
@@ -357,8 +368,6 @@ int Handle_Verified_Config(const char *buf, size_t len)
 
     generate_spines_topologies(cfg);
     char *my_ip = get_my_ip();
-    // decrypt_private_keys(cfg, my_ip);
-    free(my_ip);
     kill_all_components();
 
     const char *dir = "received_configs";
@@ -392,6 +401,24 @@ int Handle_Verified_Config(const char *buf, size_t len)
         Alarm(PRINT, "Config_Agent: Saved config to %s\n", filename);
     }
 
+    // Also save a consistent copy as latest.yaml
+    const char *latest_path = "received_configs/latest.yaml";
+    FILE *latest_fp = fopen(latest_path, "w");
+    if (!latest_fp)
+    {
+        Alarm(PRINT, "Config_Agent: Failed to write latest config to %s\n", latest_path);
+    }
+    else
+    {
+        fwrite(yaml_data, 1, yaml_len, latest_fp);
+        fclose(latest_fp);
+        Alarm(PRINT, "Config_Agent: Updated %s with latest config\n", latest_path);
+    }
+
+    start_components_from_config(cfg, my_ip);
+    Reconnect_Spines_Socket(); 
+
+    free(my_ip);
     free_yaml_config(&cfg);
     return 0;
 }
@@ -566,7 +593,7 @@ static void write_topology_file(const char *output_path, DaemonEntry *hosts, siz
  * @note Output files are:
  *   - `spines_int.conf` written to the current directory.
  *   - `spines_ext.conf` written to the current directory.
- * 
+ *
  */
 void generate_spines_topologies(const struct config *cfg)
 {
@@ -723,97 +750,6 @@ static struct host *find_my_host(struct config *cfg, const char *my_ip)
     return NULL;
 }
 
-// void decrypt_private_keys(struct config *cfg, const char *my_ip)
-// {
-//     struct host *my_host = find_my_host(cfg, my_ip);
-//     if (!my_host)
-//     {
-//         Alarm(PRINT, "Cannot find host matching IP: %s\n", my_ip);
-//         return;
-//     }
-//     printf("[DEBUG] I am host: %s (IP: %s), TPM key at: %s\n", my_host->name, my_ip, my_host->permanent_key_location);
-
-//     EVP_PKEY *tpm_priv = load_key_from_file(my_host->permanent_key_location, 1);
-//     if (!tpm_priv)
-//     {
-//         Alarm(PRINT, "Failed to load TPM private key for my host\n");
-//         return;
-//     }
-
-//     // Decrypt my spines internal key
-//     if (my_host->encrypted_spines_internal_private_key)
-//     {
-//         char *enc_key_hex, *ciphertext_hex;
-//         hybrid_unpack(my_host->encrypted_spines_internal_private_key, &enc_key_hex, &ciphertext_hex);
-//         struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-//         my_host->unencrypted_spines_internal_private_key = dec.plaintext;
-//         free(enc_key_hex);
-//         free(ciphertext_hex);
-//         printf("\n[Internal Spines Private Key]:\n%s\n", dec.plaintext);
-//     }
-
-//     // Decrypt my spines external key
-//     if (my_host->encrypted_spines_external_private_key)
-//     {
-//         char *enc_key_hex, *ciphertext_hex;
-//         hybrid_unpack(my_host->encrypted_spines_external_private_key, &enc_key_hex, &ciphertext_hex);
-//         struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-//         my_host->unencrypted_spines_external_private_key = dec.plaintext;
-//         free(enc_key_hex);
-//         free(ciphertext_hex);
-//         printf("\n[External Spines Private Key]:\n%s\n", my_host->unencrypted_spines_external_private_key);
-//     }
-
-//     // Decrypt replicas assigned to my_host
-//     for (unsigned i = 0; i < cfg->sites_count; i++)
-//     {
-//         struct site *site = &cfg->sites[i];
-//         for (unsigned j = 0; j < site->replicas_count; j++)
-//         {
-//             struct replica *rep = &site->replicas[j];
-//             struct host *rep_host = find_host_for_replica(site, rep->host);
-
-//             if (rep_host == my_host)
-//             {
-//                 if (rep->encrypted_instance_private_key)
-//                 {
-//                     char *enc_key_hex, *ciphertext_hex;
-//                     hybrid_unpack(rep->encrypted_instance_private_key, &enc_key_hex, &ciphertext_hex);
-//                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-//                     rep->unencrypted_instance_private_key = dec.plaintext;
-//                     free(enc_key_hex);
-//                     free(ciphertext_hex);
-//                     printf("\n[Instance Private Key] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_instance_private_key);
-//                 }
-
-//                 if (rep->encrypted_prime_threshold_key_share)
-//                 {
-//                     char *enc_key_hex, *ciphertext_hex;
-//                     hybrid_unpack(rep->encrypted_prime_threshold_key_share, &enc_key_hex, &ciphertext_hex);
-//                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-//                     rep->unencrypted_prime_threshold_key_share = dec.plaintext;
-//                     free(enc_key_hex);
-//                     free(ciphertext_hex);
-//                     printf("\n[Prime Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_prime_threshold_key_share);
-//                 }
-
-//                 if (rep->encrypted_sm_threshold_key_share)
-//                 {
-//                     char *enc_key_hex, *ciphertext_hex;
-//                     hybrid_unpack(rep->encrypted_sm_threshold_key_share, &enc_key_hex, &ciphertext_hex);
-//                     struct HybridDecryptionResult dec = hybrid_decrypt(ciphertext_hex, enc_key_hex, tpm_priv);
-//                     rep->unencrypted_sm_threshold_key_share = dec.plaintext;
-//                     free(enc_key_hex);
-//                     free(ciphertext_hex);
-//                     printf("\n[SM Threshold Share] (Replica %d):\n%s\n", rep->instance_id, rep->unencrypted_sm_threshold_key_share);
-//                 }
-//             }
-//         }
-//     }
-
-//     EVP_PKEY_free(tpm_priv);
-// }
-
 /**
  * Checks if a process name matches a known component (spines, prime, or scada_master).
  *
@@ -904,4 +840,98 @@ int kill_all_components()
 
     closedir(proc_dir); // close proc
     return killed;      // return number of killed processes
+}
+
+void start_components_from_config(const struct config *cfg, const char *my_ip)
+{
+    system("rm -f /tmp/spines8100 /tmp/spines8101 /tmp/spines8120 /tmp/spines8100data /tmp/spines8120data");
+
+    struct host *me = find_my_host(cfg, my_ip);
+    if (!me)
+    {
+        Alarm(EXIT, "Could not find current host (%s) in config\n", my_ip);
+    }
+
+    char cmd[1024];
+
+    // Always start spines daemons
+    snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8100 -c spines_int.conf -I %s &", my_ip);
+    system(cmd);
+    snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8120 -c spines_ext.conf -I %s &", my_ip);
+    system(cmd);
+    snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8101 -c spines_ctrl.conf -I %s &", my_ip); 
+    system(cmd);
+
+    // Check for replicas on this host
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+
+        // Start prime and scada_master if replicas match
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
+            struct replica *r = &site->replicas[j];
+            struct host *rep_host = find_host_for_replica(site, r->host);
+
+            if (rep_host == me)
+            {
+                // Pass config to scada_master and prime
+                snprintf(cmd, sizeof(cmd),
+                         "cd scada_master && ./scada_master %u %u %s:8100 %s:8120 -c received_configs/latest.yaml &",
+                         r->instance_id, r->instance_id, my_ip, my_ip);
+                system(cmd);
+
+                snprintf(cmd, sizeof(cmd),
+                         "cd prime/bin && ./prime -i %u -g %u -c received_configs/latest.yaml &",
+                         r->instance_id, r->instance_id);
+                system(cmd);
+            }
+        }
+
+        // // Start client programs
+        // if (site->type == CLIENT)
+        // {
+        //     for (unsigned j = 0; j < site->clients_count; j++)
+        //     {
+        //         struct client *c = &site->clients[j];
+        //         struct host *client_host = find_host_for_replica(site, c->host);
+
+        //         if (client_host == me && c->type)
+        //         {
+        //             if (strcmp(c->type, "JHU") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "PNNL") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "EMS") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "proxy") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "benchmark") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else
+        //             {
+        //                 Alarm(PRINT, "Unknown client type '%s' for client %u — skipping\n",
+        //                       c->type, c->client_id);
+        //                       continue;
+        //             }
+        //             system(cmd);
+        //         }
+        //     }
+        // }
+    }
 }

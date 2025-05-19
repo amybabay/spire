@@ -210,5 +210,5 @@ struct host *find_host_for_replica(struct site *site, const char *host_name)
             return &site->hosts[j];
         }
     }
-    return NULL; // No matching host found (shouldn't happen if the config is correct)
+    return NULL; 
 }

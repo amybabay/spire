@@ -70,6 +70,8 @@ void Usage(int argc, char **argv);
 void Print_Usage(void);
 void Init_Memory_Objects(void);
 
+char *config_path = "received_configs/conf.yaml"; // default config path
+
 int main(int argc, char **argv)
 {
   setlinebuf(stdout);
@@ -121,19 +123,18 @@ int main(int argc, char **argv)
   // Ignore the SIGPIPE signal, handle manually with socket send error
   signal(SIGPIPE, SIG_IGN);
 
-  
   // NEW: Load Yaml Config
-  struct config *cfg = load_yaml_config("received_configs/conf.yaml");
+  struct config *cfg = load_yaml_config(config_path);
   if (cfg == NULL)
   {
-      Alarm(EXIT, "Failed to parse config file.\n");
+    Alarm(EXIT, "Failed to parse config file.\n");
   }
 
   /* Load server addresses from configuration file */
-  // UTIL_Load_Addresses(); 
+  // UTIL_Load_Addresses();
 
   // NEW: Load Spines Addresses
-  UTIL_Load_Spines_Addresses_From_Config(cfg);
+  UTIL_Load_Addresses_From_Config(cfg);
 
   ERROR_WRAPPER_Initialize();
 
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
   OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, cfg);
 
   TC_Read_Public_Key_From_Config(cfg);
-  TC_Read_Partial_Key_From_Config(VAR.My_Server_ID, cfg); 
+  TC_Read_Partial_Key_From_Config(VAR.My_Server_ID, cfg);
 
   Alarm(PRINT, "Finished reading keys.\n");
 
@@ -288,6 +289,12 @@ void Usage(int argc, char **argv)
       argc--;
       argv++;
     }
+    else if ((argc > 1) && (!strncmp(*argv, "-c", 2)))
+    {
+      config_path = argv[1];
+      argc--;
+      argv++;
+    }
     else
       Print_Usage();
   }
@@ -296,6 +303,6 @@ void Usage(int argc, char **argv)
 void Print_Usage()
 {
   Alarm(PRINT, "Usage: ./server\n"
-               "\t[-i local_id -g tpm_id, indexed base 1, default 1]\n");
+               "\t[-i local_id -g tpm_id, indexed base 1, default 1 -c config_path default received_configs/conf.yaml]\n");
   exit(0);
 }

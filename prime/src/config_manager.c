@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
+
 #include <sys/types.h>
 #include <openssl/sha.h>
 #include <openssl/bn.h>
@@ -10,28 +10,8 @@
 #include "key_generation.h"
 #include "../OpenTC-1.1/TC-lib-1.0/TC.h"
 
-#define TPM_KEY_DIR "tpm_keys/"
 #define SM_TC_DIR "tc_keys/sm/"
 #define PRIME_TC_DIR "tc_keys/prime/"
-
-/**
- * Create the directory at the given path if it doesn't exist.
- *
- * Checks if the specified directory exists. If not, attempts to create it.
- *
- * @param path Path to the directory.
- */
-void ensure_directory(const char *path)
-{
-    struct stat st = {0};
-    if (stat(path, &st) == -1)
-    {
-        if (mkdir(path, 0755) < 0)
-        {
-            perror(path);
-        }
-    }
-}
 
 /**
  * Reads the entire contents of a file into a null-terminated string.
@@ -63,74 +43,6 @@ char *read_file_as_string(const char *filepath)
     buffer[size] = '\0';
     fclose(fp);
     return buffer;
-}
-
-/**
- * Generates and stores a simulated TPM RSA key pair for a given host.
- *
- * Creates a 3072-bit RSA key pair to simulate a TPM key. Writes the private key
- * to a PEM file named after the host in a fixed TPM key directory. Stores the
- * public key and private key file path in the host's config fields.
- *
- * @param host Pointer to the host struct to update with key paths and public key.
- *
- * @note On failure, logs an error and skips setting the relevant fields. Additionally, this is part of the 'first pass' meaning it is only used for testing and simulation purposes.
- */
-void generate_simulated_tpm_key_for_host(struct host *host)
-{
-    char private_key_filepath[512];
-    snprintf(private_key_filepath, sizeof(private_key_filepath), "%s%s_tpm_private.pem", TPM_KEY_DIR, host->name);
-
-    ensure_directory(TPM_KEY_DIR);
-
-    // update permanent key location in config
-    host->permanent_key_location = strdup(private_key_filepath);
-
-    // Generate RSA key for TPM simulation
-    EVP_PKEY *tpm_key = generate_rsa_key(3072);
-    if (!tpm_key)
-    {
-        fprintf(stderr, "Error: Failed to generate simulated TPM key for host %s\n", host->name);
-        return;
-    }
-
-    // Extract private key in PEM format (unencrypted)
-    char *tpm_private = get_private_key(tpm_key);
-    if (!tpm_private)
-    {
-        fprintf(stderr, "Error: Failed to extract TPM private key for host %s\n", host->name);
-        free_rsa_key(tpm_key);
-        return;
-    }
-
-    // Write private key to file
-    if (write_key_to_file(private_key_filepath, tpm_private) != 0)
-    {
-        fprintf(stderr, "Error: Failed to write TPM private key to %s\n", private_key_filepath);
-        free(tpm_private);
-        free_rsa_key(tpm_key);
-        return;
-    }
-
-    // Save the private key location in the config
-    host->permanent_key_location = strdup(private_key_filepath);
-
-    // Extract and store the public key in config after successfully writing private key*
-    char *tpm_public = get_public_key(tpm_key);
-    if (!tpm_public)
-    {
-        fprintf(stderr, "Error: Failed to extract TPM public key for host %s\n", host->name);
-        free(tpm_private);
-        free_rsa_key(tpm_key);
-        return;
-    }
-
-    // Set the field in the host to the public key
-    host->permanent_public_key = tpm_public;
-
-    // Cleanup
-    free(tpm_private);
-    free_rsa_key(tpm_key);
 }
 
 /* Second pass: Generate all keys using the permanent public key */
@@ -431,18 +343,18 @@ void generate_keys_for_client(struct client *client, struct host *host)
  * @note This should be run before generating or encrypting any other keys that
  * depend on the TPM public key. Part of the first pass.
  */
-void first_pass_generate_tpm_keys(struct config *cfg)
-{
-    for (unsigned i = 0; i < cfg->sites_count; i++)
-    {
-        struct site *site = &cfg->sites[i];
+// void first_pass_generate_tpm_keys(struct config *cfg)
+// {
+//     for (unsigned i = 0; i < cfg->sites_count; i++)
+//     {
+//         struct site *site = &cfg->sites[i];
 
-        for (unsigned j = 0; j < site->hosts_count; j++)
-        {
-            generate_simulated_tpm_key_for_host(&site->hosts[j]);
-        }
-    }
-}
+//         for (unsigned j = 0; j < site->hosts_count; j++)
+//         {
+//             generate_simulated_tpm_key_for_host(&site->hosts[j]);
+//         }
+//     }
+// }
 
 /**
  * Generates and encrypts all internal, external, and replica-specific keys.
@@ -456,7 +368,7 @@ void first_pass_generate_tpm_keys(struct config *cfg)
  * @note Assumes that TPM keys have already been generated and assigned in a prior pass.
  *       Logs an error if a replica's assigned host cannot be found.
  */
-void second_pass_generate_keys(struct config *cfg)
+void generate_keys(struct config *cfg)
 {
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
@@ -515,13 +427,39 @@ void second_pass_generate_keys(struct config *cfg)
  * @param input_yaml Path to the YAML configuration file.
  * @return Pointer to the fully initialized and populated config, or NULL on failure.
  */
-struct config *load_and_process_config(const char *input_yaml)
+struct config *load_and_process_config(const char *input_yaml, int simulate_tpm)
 {
     struct config *cfg = load_yaml_config(input_yaml);
     if (!cfg)
         return NULL;
 
-    first_pass_generate_tpm_keys(cfg);
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
+            struct host *host = &site->hosts[j];
+            EVP_PKEY *priv = load_key_from_file(host->permanent_key_location, 1);
+            if (!priv) {
+                fprintf(stderr, "Error: Failed to load TPM private key from %s for host %s\n",
+                        host->permanent_key_location, host->name);
+                free_yaml_config(&cfg);
+                return NULL;
+            }
+            
+            char *pub_str = get_public_key(priv);
+            EVP_PKEY_free(priv);
+            
+            if (!pub_str) {
+                fprintf(stderr, "Error: Failed to extract TPM public key from %s for host %s\n",
+                        host->permanent_key_location, host->name);
+                free_yaml_config(&cfg);
+                return NULL;
+            }
+            
+            host->permanent_public_key = pub_str;            
+        }
+    }
 
     int faults = cfg->tolerated_byzantine_faults;
     int rej_servers = cfg->tolerated_unavailable_replicas;
@@ -529,7 +467,7 @@ struct config *load_and_process_config(const char *input_yaml)
     generate_all_site_tc_keys(req_shares, faults, rej_servers, cfg->sites_count);
 
     load_threshold_pubkeys(cfg);
-    second_pass_generate_keys(cfg);
+    generate_keys(cfg);
 
     return cfg;
 }
@@ -550,28 +488,58 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
     *pub_key = load_key_from_file("cm_keys/public_key.pem", 0);
     return (*priv_key && *pub_key) ? 0 : -1;
 }
-
 static void Print_Usage(void)
 {
-    fprintf(stderr, "Usage: ./config_generator <input_yaml> <output_yaml>\n"
-                    "  <input_yaml>   : Path to YAML file describing the system configuration\n"
-                    "  <output_yaml>  : Output binary file containing signed configuration\n");
+    fprintf(stderr,
+            "Usage:\n"
+            "  ./config_generator <simulate_tpm: 0|1> <input_yaml> <output_yaml>\n\n"
+            "Arguments:\n"
+            "  simulate_tpm   1 to simulate/generate TPM keys now, 0 to load existing TPM keys\n"
+            "  input_yaml     Path to input YAML config file\n"
+            "  output_yaml    Path to output signed config file\n");
     exit(EXIT_FAILURE);
 }
 
-static void Usage(int argc, char **argv)
+static void Usage(int argc, char **argv, int *simulate_tpm, const char **input_yaml, const char **output_yaml)
 {
-    if (argc != 3)
+    if (argc != 4)
+        Print_Usage();
+
+    if (strcmp(argv[1], "1") == 0)
     {
+        *simulate_tpm = 1;
+    }
+    else if (strcmp(argv[1], "0") == 0)
+    {
+        *simulate_tpm = 0;
+    }
+    else
+    {
+        fprintf(stderr, "Invalid value for simulate_tpm: must be 0 or 1\n\n");
         Print_Usage();
     }
+
+    *input_yaml = argv[2];
+    *output_yaml = argv[3];
 }
 
 int main(int argc, char *argv[])
 {
-    Usage(argc, argv);
+    int simulate_tpm = 0;
+    const char *input_path = NULL;
+    const char *output_path = NULL;
 
-    struct config *cfg = NULL;
+    Usage(argc, argv, &simulate_tpm, &input_path, &output_path);
+    fprintf(stderr, "[INFO] TPM mode: %s\n",
+            simulate_tpm ? "simulate" : "use real");
+
+    struct config *cfg = load_and_process_config(input_path, simulate_tpm);
+    if (!cfg)
+    {
+        fprintf(stderr, "Failed to load/process config\n");
+        return EXIT_FAILURE;
+    }
+
     EVP_PKEY *cm_priv = NULL, *cm_pub = NULL;
     char *serialized_config = NULL;
     Signature sig = {0};
@@ -579,7 +547,7 @@ int main(int argc, char *argv[])
     int status = EXIT_SUCCESS;
 
     // Load and process YAML config
-    cfg = load_and_process_config(argv[1]);
+    cfg = load_and_process_config(input_path, simulate_tpm);
     if (!cfg)
     {
         fprintf(stderr, "Failed to load or process config\n");
@@ -615,7 +583,7 @@ int main(int argc, char *argv[])
     }
 
     // Write output file
-    out_fp = fopen(argv[2], "wb");
+    out_fp = fopen(output_path, "wb");
     if (!out_fp)
     {
         perror("Failed to open output file");

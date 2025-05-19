@@ -1638,7 +1638,7 @@ void UTIL_Load_Spines_Addresses(char *fileName)
 	}
 }
 
-void UTIL_Load_Spines_Addresses_From_Config(struct config *cfg)
+void UTIL_Load_Addresses_From_Config(struct config *cfg)
 {
 	int32u unique_spines;
 	int32u server, i;
@@ -1686,7 +1686,8 @@ void UTIL_Load_Spines_Addresses_From_Config(struct config *cfg)
 			}
 
 			// save the IP of the matching host in the correct server slot
-			NET.server_address_spines[replica_index++] = addr;
+			NET.server_address_spines[rep->instance_id] = addr;
+			NET.server_address[rep->instance_id] = addr;
 		}
 	}
 

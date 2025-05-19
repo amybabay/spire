@@ -61,6 +61,7 @@
 #include "../common/itrc.h"
 #include "structs.h"
 #include "queue.h"
+#include "../prime/src/parser.h"
 
 int ipc_sock;
 itrc_data itrc_main, itrc_thread;
@@ -111,6 +112,14 @@ int main(int argc, char **argv)
     benchmark_msg *ben;
     pthread_t m_tid, pi_tid;
     /*int remove_me;*/
+
+
+    struct config *cfg = load_yaml_config("../received_configs/conf.yaml");
+    if (cfg == NULL)
+    {
+        printf("Failed to parse config file.\n");
+        return EXIT_FAILURE;
+    }
 
     setlinebuf(stdout);
     Init_SM_Replicas(); // call before usage to check that we get the right args for our type

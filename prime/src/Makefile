@@ -88,12 +88,15 @@ CA_OBJ=config_agent.o key_generation.o parser.o data_structs.o utility.o network
 
 CD_OBJ=config_disseminator.o
 
-GEN_KEYS_OBJ =  generate_keys.o tc_wrapper.o parser.o key_generation.o data_structs.o utility.o network.o pre_order.o \
-        util_dll.o validate.o nm_process.o process.o packets.o order.o  \
-        signature.o net_wrapper.o merkle.o suspect_leader.o proactive_recovery.o\
-        reliable_broadcast.o view_change.o erasure.o recon.o  catchup.o $(WRAPPER_OBJ)
+# GEN_KEYS_OBJ =  generate_keys.o tc_wrapper.o parser.o key_generation.o data_structs.o utility.o network.o pre_order.o \
+#         util_dll.o validate.o nm_process.o process.o packets.o order.o  \
+#         signature.o net_wrapper.o merkle.o suspect_leader.o proactive_recovery.o\
+#         reliable_broadcast.o view_change.o erasure.o recon.o  catchup.o $(WRAPPER_OBJ)
 
-all: $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) prime driver gen_keys config_manager config_agent config_disseminator
+GEN_TPM_KEYS_OBJ = gen_tpm_keys.o key_generation.o parser.o
+
+
+all: $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) prime driver gen_tpm_keys config_manager config_agent config_disseminator
 
 
 $(STDUTIL_LIB):
@@ -105,8 +108,8 @@ $(LIBSPREAD_UTIL):
 $(TC_LIB):
 	cd ../OpenTC-1.1/TC-lib-1.0/; ./configure; make
 
-gen_keys: $(GEN_KEYS_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/gen_keys $(GEN_KEYS_OBJ) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) $(STDUTIL_LIB) -lcrypto -ldl -lpthread -lrt -lcyaml
+gen_tpm_keys: $(GEN_TPM_KEYS_OBJ)
+	$(CC) $(LDFLAGS) -o ../bin/gen_tpm_keys $(GEN_TPM_KEYS_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lcrypto -ldl -lpthread -lrt -lcyaml
 
 prime: $(PRIME_OBJ)
 	$(CC) $(LDFLAGS) $(CPPFLAGS) -o ../bin/prime $(PRIME_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
@@ -136,6 +139,8 @@ clean:
 	rm -f ../bin/gen_keys
 	rm -f ../bin/config_manager
 	rm -f ../bin/config_agent
+	rm -f ../bin/config_disseminator
+	rm -f ../bin/gen_tpm_keys
 
 # Also cleans up the stdutil, libspread-util, and OpenTC libraries
 # Uses - to ignore errors, since these fail if clean is run multiple times

@@ -64,6 +64,11 @@ SM_OBJ=scada_master.o \
 		../common/key_value.o \
 		../config/cJSON.o \
 		../config/config_helpers.o
+
+SM_OBJ += ../prime/src/parser.o ../prime/src/key_generation.o
+INC += -I../prime/src
+LDLIBS += -lcyaml
+
 CONF_SM_OBJ=conf_scada_master.o \
         queue.o \
         ../common/conf_scada_packets.o \
@@ -94,7 +99,8 @@ scada_master.o: scada_master.c ../common/scada_packets.h \
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INC) -o scada_master.o scada_master.c 
 
 scada_master: $(SM_OBJ)
-		$(CC) $(LDFLAGS) -o scada_master $(SM_OBJ) $(TC_LIB) $(LIBSPREAD_UTIL) $(SPINES_LIB) -lpthread -ldl -lcrypto -lm -lrt
+		$(CC) $(LDFLAGS) -o scada_master $(SM_OBJ) $(TC_LIB) $(LIBSPREAD_UTIL) $(SPINES_LIB) -lpthread -ldl -lcrypto -lm -lrt $(LDLIBS)
+
 
 conf_scada_master.o: conf_scada_master.c ../common/conf_scada_packets.h \
                 ../common/conf_net_wrapper.h ../common/def.h ../common/conf_openssl_rsa.h \

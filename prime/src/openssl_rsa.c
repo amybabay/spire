@@ -361,7 +361,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
 				if (!pub_rsa)
 					Alarm(EXIT, "Failed to load public key for replica %u\n", rep->instance_id);
 				public_rsa_by_server[rep->instance_id] = pub_rsa;
-				public_rsa_by_client[rep->instance_id] = RSAPublicKey_dup(pub_rsa); 
+				public_rsa_by_client[rep->instance_id] = RSAPublicKey_dup(pub_rsa);
 			}
 
 			// Load private key if this is our replica
@@ -375,11 +375,30 @@ void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
 				if (!tpm_privkey)
 					Alarm(EXIT, "Failed to load TPM key for replica %d\n", rep->instance_id);
 
-				private_rsa = EVP_PKEY_get1_RSA(
-					load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey));
 
-				private_client_rsa = EVP_PKEY_get1_RSA(
-					load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey));
+				EVP_PKEY *decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
+				if (!decrypted_pkey)
+				{
+					Alarm(EXIT, "[DECRYPTION] Failed to decrypt instance private key for replica %u\n", rep->instance_id);
+				}
+				private_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
+				if (!private_rsa)
+				{
+					Alarm(EXIT, "[KEY CONVERSION] EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
+				}
+				EVP_PKEY_free(decrypted_pkey);
+
+				decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
+				if (!decrypted_pkey)
+				{
+					Alarm(EXIT, "[DECRYPTION] Failed to decrypt instance private key for client portion of replica %u\n", rep->instance_id);
+				}
+				private_client_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
+				if (!private_client_rsa)
+				{
+					Alarm(EXIT, "[KEY CONVERSION] EVP_PKEY_get1_RSA failed for client portion of replica %u\n", rep->instance_id);
+				}
+				EVP_PKEY_free(decrypted_pkey);
 			}
 		}
 
@@ -398,14 +417,14 @@ void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
 			}
 
 			// load private key if this is our client
-			if (prime_client_id == my_instance_id) // unsure about this, confused if the ids will be the 
+			if (prime_client_id == my_instance_id) // unsure about this, confused if the ids will be the
 			{
-				struct host *host = find_host_for_replica(site, client->host); 
+				struct host *host = find_host_for_replica(site, client->host);
 				if (!host || !host->permanent_key_location)
 					Alarm(EXIT, "Could not find host for client %d\n", client->client_id);
 
 				tpm_privkey = load_key_from_file(host->permanent_key_location, 1);
-				if (!tpm_privkey)	
+				if (!tpm_privkey)
 					Alarm(EXIT, "Failed to load TPM key for client %d\n", client->client_id);
 
 				private_client_rsa = EVP_PKEY_get1_RSA(
