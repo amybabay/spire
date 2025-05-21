@@ -95,8 +95,11 @@ CD_OBJ=config_disseminator.o
 
 GEN_TPM_KEYS_OBJ = gen_tpm_keys.o key_generation.o parser.o
 
+LIBRECONFIG_OBJ = parser.o key_generation.o
+LIBRECONFIG = libreconfiguration.a
 
-all: $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) prime driver gen_tpm_keys config_manager config_agent config_disseminator
+
+all: $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) libreconfiguration.a prime driver gen_tpm_keys config_manager config_agent config_disseminator
 
 
 $(STDUTIL_LIB):
@@ -107,6 +110,9 @@ $(LIBSPREAD_UTIL):
 
 $(TC_LIB):
 	cd ../OpenTC-1.1/TC-lib-1.0/; ./configure; make
+
+$(LIBRECONFIG): $(LIBRECONFIG_OBJ)
+	ar rcs $(LIBRECONFIG) $(LIBRECONFIG_OBJ)
 
 gen_tpm_keys: $(GEN_TPM_KEYS_OBJ)
 	$(CC) $(LDFLAGS) -o ../bin/gen_tpm_keys $(GEN_TPM_KEYS_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lcrypto -ldl -lpthread -lrt -lcyaml
@@ -153,3 +159,7 @@ cleaner: clean
 distclean: cleaner
 	cd ../bin/keys; rm -f *.pem; rm -f *.key
 	cd ../bin/tpm_keys; rm -f *.pem; rm -f *.key
+
+
+
+

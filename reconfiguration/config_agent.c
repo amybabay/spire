@@ -23,10 +23,10 @@
 
 #define MAX_DAEMONS 256
 #define BASE_SPINES_CONFIG "base_spines.conf"
-#define SPINES_INT_FILE "../../spines/daemon/spines_int.conf"
-#define SPINES_EXT_FILE "../../spines/daemon/spines_ext.conf"
+#define SPINES_INT_FILE "./../spines/daemon/spines_int.conf"
+#define SPINES_EXT_FILE "./../spines/daemon/spines_ext.conf"
 #define DEFAULT_SPINES_ADDR "127.0.0.1"
-#define DEFAULT_SPINES_PORT 8200
+#define DEFAULT_SPINES_PORT 8100
 
 typedef struct
 {
@@ -127,9 +127,10 @@ void Reconnect_Spines_Socket()
     E_detach_fd(Ctrl_Spines, READ_FD);
     close(Ctrl_Spines);
 
-    Init_Network(); // re-creates the multicast socket and rejoins the group
+    Init_Network();  // re-creates the multicast socket and rejoins the group
     E_attach_fd(Ctrl_Spines, READ_FD, Handle_Conf_Message, NULL, NULL, HIGH_PRIORITY);
 }
+
 
 static void Handle_Conf_Message(int s, int source, void *dummy)
 {
@@ -368,7 +369,6 @@ int Handle_Verified_Config(const char *buf, size_t len)
     generate_spines_topologies(cfg);
     char *my_ip = get_my_ip();
     kill_all_components();
-    sleep(1);
 
     const char *dir = "received_configs";
     struct stat st = {0};
@@ -416,8 +416,7 @@ int Handle_Verified_Config(const char *buf, size_t len)
     }
 
     start_components_from_config(cfg, my_ip);
-    // sleep(5);
-    // Reconnect_Spines_Socket();
+    Reconnect_Spines_Socket(); 
 
     free(my_ip);
     free_yaml_config(&cfg);
@@ -788,8 +787,6 @@ int kill_all_components()
     struct dirent *entry;
     int killed = 0;
 
-    pid_t my_pid = getpid();
-
     if (!proc_dir)
     {
         perror("opendir /proc");
@@ -826,45 +823,6 @@ int kill_all_components()
             // if is a target process
             if (is_target_process(comm))
             {
-                int skip = 0;
-
-                // Special case: only skip spines if it's running spines_ctrl.conf
-                if (strcmp(comm, "spines") == 0)
-                {
-                    char cmdline_path[64];
-                    snprintf(cmdline_path, sizeof(cmdline_path), "/proc/%d/cmdline", pid);
-                    FILE *cmdline_file = fopen(cmdline_path, "r");
-                    if (cmdline_file)
-                    {
-                        char cmdline[1024];
-                        size_t len = fread(cmdline, 1, sizeof(cmdline) - 1, cmdline_file);
-                        fclose(cmdline_file);
-
-                        if (len > 0)
-                        {
-                            cmdline[len] = '\0';
-
-                            // Replace nulls with spaces to log clearly
-                            for (size_t i = 0; i < len; i++)
-                            {
-                                if (cmdline[i] == '\0')
-                                    cmdline[i] = ' ';
-                            }
-
-                            if (strstr(cmdline, "spines_ctrl.conf") != NULL)
-                            {
-                                skip = 1;
-                            }
-                        }
-                    }
-                }
-
-                if (skip)
-                {
-                    printf("Skipping %s (PID %d) — spines_ctrl.conf detected\n", comm, pid);
-                    continue;
-                }
-
                 if (kill(pid, SIGKILL) == 0)
                 {
                     printf("Killed %s (PID %d)\n", comm, pid);
@@ -886,8 +844,7 @@ int kill_all_components()
 
 void start_components_from_config(const struct config *cfg, const char *my_ip)
 {
-    system("rm -f /tmp/spines8100 /tmp/spines8101 /tmp/spines8120 /tmp/spines8200 "
-           "/tmp/spines8100data /tmp/spines8120data /tmp/spines8200data");
+    system("rm -f /tmp/spines8100 /tmp/spines8101 /tmp/spines8120 /tmp/spines8100data /tmp/spines8120data");
 
     struct host *me = find_my_host(cfg, my_ip);
     if (!me)
@@ -897,11 +854,13 @@ void start_components_from_config(const struct config *cfg, const char *my_ip)
 
     char cmd[1024];
 
-    // Always start spines ctrl
-    // snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8100 -c spines_ctrl.conf -I %s > ../../prime/bin/logs/spines_ctrl.log &", my_ip);
-    // system(cmd);
-
-    Alarm(PRINT, "\n=== Checking for Replicas to Start ===");
+    // Always start spines daemons
+    snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8100 -c spines_int.conf -I %s &", my_ip);
+    system(cmd);
+    snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8120 -c spines_ext.conf -I %s &", my_ip);
+    system(cmd);
+    snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8101 -c spines_ctrl.conf -I %s &", my_ip); 
+    system(cmd);
 
     // Check for replicas on this host
     for (unsigned i = 0; i < cfg->sites_count; i++)
@@ -916,95 +875,63 @@ void start_components_from_config(const struct config *cfg, const char *my_ip)
 
             if (rep_host == me)
             {
-                // Start internal Spines daemon if this host is configured for it
-                if (me->runs_spines_internal)
-                {
-                    snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p 8100 -c spines_int.conf -I %s > ../../prime/bin/logs/spines_int.log &",
-                             my_ip);
-                    Alarm(PRINT, "\nStarting internal Spines: %s", cmd);
-                    system(cmd);
-                }
-
-                // Start external Spines daemon if this host is configured for it
-                if (me->runs_spines_external)
-                {
-                    snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p 8120 -c spines_ext.conf -I %s > ../../prime/bin/logs/spines_ext.log &",
-                             my_ip);
-                    Alarm(PRINT, "\nStarting external Spines: %s", cmd);
-                    system(cmd);
-                }
-
-                Alarm(PRINT, "\nStarting replica instance %u from site %u", r->instance_id, i);
                 // Pass config to scada_master and prime
                 snprintf(cmd, sizeof(cmd),
-                         "cd ../../scada_master && ./scada_master %u %u %s:8100 %s:8120 -c ../prime/bin/received_configs/latest.yaml > ../prime/bin/logs/sm.log &",
+                         "cd scada_master && ./scada_master %u %u %s:8100 %s:8120 -c received_configs/latest.yaml &",
                          r->instance_id, r->instance_id, my_ip, my_ip);
-                Alarm(PRINT, "\nStarting scada_master: %s", cmd);
                 system(cmd);
 
                 snprintf(cmd, sizeof(cmd),
-                         "./prime -i %u -g %u > logs/prime.log &",
+                         "cd prime/bin && ./prime -i %u -g %u -c received_configs/latest.yaml &",
                          r->instance_id, r->instance_id);
-                Alarm(PRINT, "\nStarting prime: %s", cmd);
                 system(cmd);
             }
         }
 
-        // Start client programs
-        if (site->type == CLIENT)
-        {
-            Alarm(PRINT, "\n=== Checking for Clients to Start (Site %u) ===", i);
-            for (unsigned j = 0; j < site->clients_count; j++)
-            {
-                struct client *c = &site->clients[j];
-                struct host *client_host = find_host_for_replica(site, c->host);
+        // // Start client programs
+        // if (site->type == CLIENT)
+        // {
+        //     for (unsigned j = 0; j < site->clients_count; j++)
+        //     {
+        //         struct client *c = &site->clients[j];
+        //         struct host *client_host = find_host_for_replica(site, c->host);
 
-                if (client_host == me && c->type)
-                {
-                    // Client programs have been refactored to default to received_configs/latest.yaml
-                    // so no config path argument is necessary but can be passed for each with -c <path>
-                    snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p 8120 -c spines_ext.conf -I %s > logs/spines_ext.log &",
-                             my_ip);
-                    Alarm(PRINT, "\nStarting external Spines (client host): %s", cmd);
-                    system(cmd);
-
-                    if (strcmp(c->type, "JHU") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./jhu_hmi/jhu_hmi <IP>:<PORT> &");
-                        Alarm(PRINT, "\nStarting JHU HMI: %s", cmd);
-                    }
-                    else if (strcmp(c->type, "PNNL") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./pnnl_hmi/pnnl_hmi <IP>:<PORT> &");
-                        Alarm(PRINT, "\nStarting PNNL HMI: %s", cmd);
-                    }
-                    else if (strcmp(c->type, "EMS") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./ems_hmi/ems_hmi <IP>:<PORT> &");
-                        Alarm(PRINT, "\nStarting EMS HMI: %s", cmd);
-                    }
-                    else if (strcmp(c->type, "proxy") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd proxy/ && ./proxy <ID> <IP>:<PORT> <Num_RTU_Emulated> &");
-                        Alarm(PRINT, "\nStarting Proxy Client: %s", cmd);
-                    }
-                    else if (strcmp(c->type, "benchmark") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd benchmark/ && ./benchmark <ID> <IP>:<PORT> <Poll_Frequency(usec)> <Num_Polls> &");
-                        Alarm(PRINT, "\nStarting Benchmark Client: %s", cmd);
-                    }
-                    else
-                    {
-                        Alarm(PRINT, "\nUnknown client type '%s' for client %u — skipping", c->type, c->client_id);
-                        continue;
-                    }
-                    system(cmd);
-                }
-            }
-        }
+        //         if (client_host == me && c->type)
+        //         {
+        //             if (strcmp(c->type, "JHU") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "PNNL") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "EMS") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "proxy") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else if (strcmp(c->type, "benchmark") == 0)
+        //             {
+        //                 snprintf(cmd, sizeof(cmd),
+        //                  "cd <CLIENT_PROGRAM_DIR> && ./<CLIENT_PROGRAM> -c received_configs/latest.yaml &");
+        //             }
+        //             else
+        //             {
+        //                 Alarm(PRINT, "Unknown client type '%s' for client %u — skipping\n",
+        //                       c->type, c->client_id);
+        //                       continue;
+        //             }
+        //             system(cmd);
+        //         }
+        //     }
+        // }
     }
-    Alarm(PRINT, "\n=== Component Startup Complete ===\n");
 }

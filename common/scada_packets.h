@@ -50,6 +50,7 @@
 #include <stdint.h>
 #include "def.h"
 #include "net_wrapper.h"
+#include "../prime/src/parser.h"
 
 /* Definitions for compatibility with Prime */
 #define UPDATE_SIZE 300
@@ -408,6 +409,8 @@ typedef struct itrc_data_d {
     int spines_int_port;
     char spines_ext_addr[32];
     int spines_ext_port;
+
+    struct config *cfg;
 } itrc_data;
 
 typedef struct net_sock_d {

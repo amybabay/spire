@@ -62,6 +62,7 @@
 #include "net_wrapper.h"
 #include "spines_lib.h"
 
+
 //Sahiti Notes:
 //NUM_SM : 3f+2k+1 or N
 //NUM_CC_REPLICA : replicas in cc
@@ -99,54 +100,100 @@ int Curr_num_sites=NUM_SITES;
 int max_rcv_buff(int sk);
 int max_snd_buff(int sk);
 
-/* Fills in CC_Replicas array with ids of control center replicas */
-void Init_SM_Replicas()
+
+void Init_SM_Replicas(struct config *cfg)
 {
-    int id, site, cc_rep;
-
-    cc_rep = 0;
-    site = 0;
-    for (id = 1; id <= NUM_SM; id++)
-    {   
-        All_Sites[id-1] = site;
-
-        if (site < NUM_CC) {
-            CC_Replicas[cc_rep] = id; 
-            CC_Sites[cc_rep] = site;
-            cc_rep++;
-        } 
-        site = (site + 1) % NUM_SITES;
-    }  
-
-    for(int i=0; i < MAX_NUM_SERVER_SLOTS;i++){
-        memset(Curr_Ext_Site_Addrs[i],0,sizeof(Curr_Ext_Site_Addrs[i]));
-        memset(Curr_Int_Site_Addrs[i],0,sizeof(Curr_Int_Site_Addrs[i]));
-        Curr_CC_Replicas[i]=0;
-        Curr_CC_Sites[i]=0;
-        Curr_All_Sites[i]=0;
-    }
+    int id, site_index, cc_rep = 0;
+    int site = 0;
     
-    for (id = 1; id <= Curr_num_CC ;id++){
-        sprintf(Curr_Ext_Site_Addrs[id-1],"%s",Ext_Site_Addrs[id-1]);
-    }
+    Curr_num_SM = 0;
+    Curr_num_CC = 0;
+    Curr_num_sites = cfg->sites_count;
     
-    for(id = 1; id <= Curr_num_sites ; id++){
-        sprintf(Curr_Int_Site_Addrs[id-1],"%s",Int_Site_Addrs[id-1]);
+    // count control centers
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
+        if (cfg->sites[i].type == CONTROL_CENTER)
+            Curr_num_CC++;
     }
 
-    cc_rep = 0;
-     site=0;
-     for (id = 1; id <= Curr_num_SM; id++){
-         Curr_All_Sites[id-1] = site;
-        if (site < Curr_num_CC) {
-            Curr_CC_Replicas[cc_rep] = id;
-            Curr_CC_Sites[cc_rep] = site;
-            cc_rep++;
+    memset(Curr_Ext_Site_Addrs, 0, sizeof(Curr_Ext_Site_Addrs));
+    memset(Curr_Int_Site_Addrs, 0, sizeof(Curr_Int_Site_Addrs));
+    memset(Curr_All_Sites, 0, sizeof(Curr_All_Sites));
+    memset(Curr_CC_Replicas, 0, sizeof(Curr_CC_Replicas));
+    memset(Curr_CC_Sites, 0, sizeof(Curr_CC_Sites));
+
+    // Fill site address arrays
+    for (site_index = 0; site_index < (int)cfg->sites_count; site_index++) {
+        struct site *s = &cfg->sites[site_index];
+        for (unsigned j = 0; j < s->replicas_count; j++) {
+            struct replica *r = &s->replicas[j];
+            id = r->instance_id;
+
+            snprintf(Curr_Ext_Site_Addrs[id - 1], sizeof(Curr_Ext_Site_Addrs[id - 1]), "%s", r->spines_external_daemon);
+            snprintf(Curr_Int_Site_Addrs[id - 1], sizeof(Curr_Int_Site_Addrs[id - 1]), "%s", r->spines_internal_daemon);
+            Curr_All_Sites[id - 1] = site_index;
+
+            if (site_index < Curr_num_CC) {
+                Curr_CC_Replicas[cc_rep] = id;
+                Curr_CC_Sites[cc_rep] = site_index;
+                cc_rep++;
+            }
+
+            Curr_num_SM++;
         }
-        site = (site + 1) % Curr_num_sites;
-     }
+    }
 
+    Curr_num_CC_Replica = cc_rep;
 }
+
+// /* Fills in CC_Replicas array with ids of control center replicas */
+// void Init_SM_Replicas()
+// {
+//     int id, site, cc_rep;
+
+//     cc_rep = 0;
+//     site = 0;
+//     for (id = 1; id <= NUM_SM; id++)
+//     {   
+//         All_Sites[id-1] = site;
+
+//         if (site < NUM_CC) {
+//             CC_Replicas[cc_rep] = id; 
+//             CC_Sites[cc_rep] = site;
+//             cc_rep++;
+//         } 
+//         site = (site + 1) % NUM_SITES;
+//     }  
+
+//     for(int i=0; i < MAX_NUM_SERVER_SLOTS;i++){
+//         memset(Curr_Ext_Site_Addrs[i],0,sizeof(Curr_Ext_Site_Addrs[i]));
+//         memset(Curr_Int_Site_Addrs[i],0,sizeof(Curr_Int_Site_Addrs[i]));
+//         Curr_CC_Replicas[i]=0;
+//         Curr_CC_Sites[i]=0;
+//         Curr_All_Sites[i]=0;
+//     }
+    
+//     for (id = 1; id <= Curr_num_CC ;id++){
+//         sprintf(Curr_Ext_Site_Addrs[id-1],"%s",Ext_Site_Addrs[id-1]);
+//     }
+    
+//     for(id = 1; id <= Curr_num_sites ; id++){
+//         sprintf(Curr_Int_Site_Addrs[id-1],"%s",Int_Site_Addrs[id-1]);
+//     }
+
+//     cc_rep = 0;
+//      site=0;
+//      for (id = 1; id <= Curr_num_SM; id++){
+//          Curr_All_Sites[id-1] = site;
+//         if (site < Curr_num_CC) {
+//             Curr_CC_Replicas[cc_rep] = id;
+//             Curr_CC_Sites[cc_rep] = site;
+//             cc_rep++;
+//         }
+//         site = (site + 1) % Curr_num_sites;
+//      }
+
+// }
 
 void Reset_SM_def_vars(int32u N,int32u f, int32u k, int32u cc_replicas, int32u num_cc, int32 num_dc){
     if(N< (3*f+2*k+1))

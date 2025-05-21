@@ -50,6 +50,7 @@
 #include "def.h"
 #include <stdint.h>
 #include <signal.h>
+#include "../prime/src/parser.h"
 
 #ifndef byte
 #define byte uint8_t
@@ -106,7 +107,8 @@ extern int Curr_num_sites;
 # define MAX(a,b) (((a)>(b))?(a):(b))
 # define MIN(a,b) (((a)<(b))?(a):(b))
 
-void Init_SM_Replicas();
+// void Init_SM_Replicas();
+void Init_SM_Replicas(struct config *cfg);
 void Reset_SM_def_vars(int32u N,int32u f, int32u k, int32u cc_replicas, int32u num_cc, int32 num_dc);
 void Reset_SM_Replicas(int32u tpm_based_id[MAX_NUM_SERVER_SLOTS],int replica_flag[MAX_NUM_SERVER_SLOTS],char spines_ext_addresses[MAX_NUM_SERVER_SLOTS][32],char spines_int_addresses[MAX_NUM_SERVER_SLOTS][32]);
 int  Is_CC_Replica(int id);

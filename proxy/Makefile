@@ -48,9 +48,12 @@
 CC=gcc
 CFLAGS+= -Wall -W -g
 TARGET=proxy
-LIBS=-lpthread ../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
+RECONF_LIB = ../prime/src/libreconfiguration.a -lcyaml
+
+LIBS=-lpthread $(RECONF_LIB) ../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
            ../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
 		   -lrt -ldl -lcrypto -lpthread -lm
+		   
 INC= -I ../prime/stdutil/include -I ../spines/libspines/
 OBJECTS=proxy.o \
 		../common/scada_packets.o \

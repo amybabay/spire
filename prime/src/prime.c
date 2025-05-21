@@ -70,7 +70,7 @@ void Usage(int argc, char **argv);
 void Print_Usage(void);
 void Init_Memory_Objects(void);
 
-char *config_path = "received_configs/conf.yaml"; // default config path
+char *config_path = "received_configs/latest.yaml"; // default config path
 
 int main(int argc, char **argv)
 {

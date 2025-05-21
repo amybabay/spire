@@ -63,3 +63,33 @@ services:
       - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true
+
+
+  spire5:
+    image: spire-img
+    container_name: spire5
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.107
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
+    tty: true
+    stdin_open: true
+
+    
+  spire6:
+    image: spire-img
+    container_name: spire6
+    networks:
+      spire-net:
+        ipv4_address: 192.168.101.108
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./pregenerated_keys:/app/spire/pregenerated_keys
+      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
+    tty: true
+    stdin_open: true

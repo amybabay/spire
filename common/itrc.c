@@ -219,9 +219,15 @@ void *ITRC_Client(void *data)
 
     /* Setup Keys. For TC, only Public here for verification of TC Signed Messages */
     OPENSSL_RSA_Init();
-    OPENSSL_RSA_Read_Keys(Prime_Client_ID, RSA_CLIENT, itrcd->prime_keys_dir);
-    TC_Read_Public_Key(itrcd->sm_keys_dir);
+    // OPENSSL_RSA_Read_Keys(Prime_Client_ID, RSA_CLIENT, itrcd->prime_keys_dir);
+    // TC_Read_Public_Key(itrcd->sm_keys_dir);
    
+    struct config *cfg = itrcd->cfg;
+
+    OPENSSL_RSA_Read_Keys(My_ID, cfg, "../prime/bin");
+    TC_Read_Public_Key_From_Config(cfg);
+
+
     /* Setup the spines timeout frequency - if disconnected, will try to reconnect
      *  this often */
     spines_timeout.tv_sec  = SPINES_CONNECT_SEC;
@@ -865,9 +871,15 @@ void *ITRC_Master(void *data)
     
     /* Read Keys */
     OPENSSL_RSA_Init();
-    OPENSSL_RSA_Read_Keys(My_ID, RSA_SERVER, itrcd->prime_keys_dir);
-    TC_Read_Public_Key(itrcd->sm_keys_dir);
-    TC_Read_Partial_Key(My_ID, 1, itrcd->sm_keys_dir); /* only "1" site */
+    // OPENSSL_RSA_Read_Keys(My_ID, RSA_SERVER, itrcd->prime_keys_dir);
+    // TC_Read_Public_Key(itrcd->sm_keys_dir);
+    // TC_Read_Partial_Key(My_ID, 1, itrcd->sm_keys_dir);
+
+    struct config *cfg = itrcd->cfg;
+    OPENSSL_RSA_Read_Keys(My_ID, cfg, "../prime/bin");
+    TC_Read_Public_Key_From_Config(cfg);
+    TC_Read_Partial_Key_From_Config(My_ID, cfg, "../prime/bin");
+
 
     spines_timeout.tv_sec  = SPINES_CONNECT_SEC;
     spines_timeout.tv_usec = SPINES_CONNECT_USEC;

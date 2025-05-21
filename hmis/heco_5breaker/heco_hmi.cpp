@@ -92,6 +92,8 @@ int Script_Breaker_Val;
 sp_time Next_Button, Button_Pressed_Duration;
 extern int32u My_Global_Configuration_Number;
 
+char config_path[256] = "../prime/bin/received_configs/latest.yaml";
+
 extern void modelInit();
 
 void itrc_init(int ac, char **av) 
@@ -99,14 +101,34 @@ void itrc_init(int ac, char **av)
     char *ip;
     struct timeval now;
     
+    
     // Usage check
-    if (ac < 2 || ac > 3) {
-        printf("Usage: %s spinesAddr:spinesPort [-port=PORT]\n", av[0]);
+    if (ac < 2 || ac > 5)
+    {
+        printf("Usage: %s spinesAddr:spinesPort [-port=PORT] [-c config_file]\n", av[0]);
         exit(EXIT_FAILURE);
+    }
+    for (int i = 2; i < ac; ++i)
+    {
+
+        if (strcmp(av[i], "-c") == 0 && i + 1 < ac)
+        {
+            strncpy(config_path, av[i + 1], sizeof(config_path) - 1);
+            config_path[sizeof(config_path) - 1] = '\0';
+            i++;
+        }
+    }
+
+    struct config *cfg = load_yaml_config(config_path);
+
+    if (cfg == NULL)
+    {
+        printf("Failed to parse config file.\n");
+        return;
     }
 
     My_Global_Configuration_Number = 0;
-    Init_SM_Replicas();
+    Init_SM_Replicas(cfg);
 
     // NET Setup
     gettimeofday(&now, NULL);
@@ -119,22 +141,23 @@ void itrc_init(int ac, char **av)
     My_IP = getIP();
     // Setup IPC for HMI main thread
     memset(&itrc_in, 0, sizeof(itrc_data));
-    sprintf(itrc_in.prime_keys_dir, "%s", (char *)HMI_PRIME_KEYS);
-    sprintf(itrc_in.sm_keys_dir, "%s", (char *)HMI_SM_KEYS);
+    // sprintf(itrc_in.prime_keys_dir, "%s", (char *)HMI_PRIME_KEYS);
+    // sprintf(itrc_in.sm_keys_dir, "%s", (char *)HMI_SM_KEYS);
     sprintf(itrc_in.ipc_local, "%s%d", (char *)HMI_IPC_MAIN, My_ID);
     sprintf(itrc_in.ipc_remote, "%s%d", (char *)HMI_IPC_ITRC, My_ID);
     ipc_sock = IPC_DGram_Sock(itrc_in.ipc_local);
 
     // Setup IPC for Worker thread (itrc client)
     memset(&itrc_out, 0, sizeof(itrc_data));
-    sprintf(itrc_out.prime_keys_dir, "%s", (char *)HMI_PRIME_KEYS);
-    sprintf(itrc_out.sm_keys_dir, "%s", (char *)HMI_SM_KEYS);
+    // sprintf(itrc_out.prime_keys_dir, "%s", (char *)HMI_PRIME_KEYS);
+    // sprintf(itrc_out.sm_keys_dir, "%s", (char *)HMI_SM_KEYS);
     sprintf(itrc_out.ipc_local, "%s%d", (char *)HMI_IPC_ITRC, My_ID);
     sprintf(itrc_out.ipc_remote, "%s%d", (char *)HMI_IPC_MAIN, My_ID);
     ip = strtok(av[1], ":");
     sprintf(itrc_out.spines_ext_addr, "%s", ip);
     ip = strtok(NULL, ":");
     sscanf(ip, "%d", &itrc_out.spines_ext_port);
+    itrc_out.cfg = cfg;
 }
 
 void *master_connection(void *arg) 

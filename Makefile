@@ -74,7 +74,7 @@ substation: prime $(SS_SUBDIRS)
 	done
 
 # Build core of Spire system for benchmarking (without PLCs and HMIs)
-core: spines prime scada_master benchmark
+core: spines prime scada_master benchmark 
 
 spines:
 	cd spines; ./configure; $(MAKE) -C daemon parser; $(MAKE)

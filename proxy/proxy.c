@@ -69,6 +69,9 @@
 #include "../common/key_value.h"
 #include "../config/cJSON.h"
 #include "../config/config_helpers.h"
+#include "../prime/src/parser.h"
+
+char config_path[256] = "../prime/bin/received_configs/latest.yaml";  
 
 #define MAX_PATH 1000
 
@@ -148,13 +151,28 @@ int main(int argc, char *argv[])
     setlinebuf(stdout);
     
     /* Parse args */
-    if(argc != 4) {
-        printf("HELP: proxy sub spinesAddr:spinesPort Num_RTU_Emulated\n");
+    if (argc < 4 || argc > 6) {
+        printf("HELP: %s sub spinesAddr:spinesPort Num_RTU_Emulated [-c config_file]\n", argv[0]);
         return 0;
     }
+
+    for (int i = 4; i < argc - 1; ++i) {
+        if (strcmp(argv[i], "-c") == 0) {
+            strncpy(config_path, argv[i + 1], sizeof(config_path) - 1);
+            config_path[sizeof(config_path) - 1] = '\0';
+        }
+    }
     
+    struct config *cfg = load_yaml_config(config_path);
+
+    if (cfg == NULL)
+    {
+        printf("Failed to parse config file.\n");
+        return EXIT_FAILURE;
+    }
+
     My_Global_Configuration_Number=0;
-    Init_SM_Replicas();
+    Init_SM_Replicas(cfg);
 
     /* zero ipc_used */
     for(i=0; i < NUM_PROTOCOLS; i++) {
@@ -251,22 +269,23 @@ int main(int argc, char *argv[])
     // Setup IPC for the RTU Proxy main thread
     printf("PROXY: Setting up IPC for RTU proxy thread\n");
     memset(&itrc_main, 0, sizeof(itrc_data));
-    sprintf(itrc_main.prime_keys_dir, "%s", (char *)PROXY_PRIME_KEYS);
-    sprintf(itrc_main.sm_keys_dir, "%s", (char *)PROXY_SM_KEYS);
+    // sprintf(itrc_main.prime_keys_dir, "%s", (char *)PROXY_PRIME_KEYS);
+    // sprintf(itrc_main.sm_keys_dir, "%s", (char *)PROXY_SM_KEYS);
     sprintf(itrc_main.ipc_local, "%s%d", (char *)RTU_IPC_MAIN, My_ID);
     sprintf(itrc_main.ipc_remote, "%s%d", (char *)RTU_IPC_ITRC, My_ID);
     ipc_sock = IPC_DGram_Sock(itrc_main.ipc_local);
 
     // Setup IPC for the Worker Thread (running the ITRC Client)
     memset(&itrc_thread, 0, sizeof(itrc_data));
-    sprintf(itrc_thread.prime_keys_dir, "%s", (char *)PROXY_PRIME_KEYS);
-    sprintf(itrc_thread.sm_keys_dir, "%s", (char *)PROXY_SM_KEYS);
+    // sprintf(itrc_thread.prime_keys_dir, "%s", (char *)PROXY_PRIME_KEYS);
+    // sprintf(itrc_thread.sm_keys_dir, "%s", (char *)PROXY_SM_KEYS);
     sprintf(itrc_thread.ipc_local, "%s%d", (char *)RTU_IPC_ITRC, My_ID);
     sprintf(itrc_thread.ipc_remote, "%s%d", (char *)RTU_IPC_MAIN, My_ID);
     ip_ptr = strtok(argv[2], ":");
     sprintf(itrc_thread.spines_ext_addr, "%s", ip_ptr);
     ip_ptr = strtok(NULL, ":");
     sscanf(ip_ptr, "%d", &itrc_thread.spines_ext_port);
+    itrc_thread.cfg = cfg;
 
     printf("PROXY: Setting up ITRC Client thread\n");
     pthread_create(&tid, NULL, &ITRC_Client, (void *)&itrc_thread);

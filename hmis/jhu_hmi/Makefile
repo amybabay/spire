@@ -56,10 +56,14 @@ SPIRE         = ../..
 INCPATH       = -I. -I$(PVB)/pvserver -I$(PRIME)/stdutil/include -I$(SPINES)/libspines/ -I$(SPIRE)/common
 LINK          = g++
 LFLAGS        = -Wl,-O1
+
+RECONF_LIB = $(PRIME)/src/libreconfiguration.a
+
 LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(PRIME)/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 					$(SPINES)/libspines/libspines.a $(PRIME)/stdutil/lib/libstdutil.a \
-					-lrt -ldl -lcrypto
+					$(RECONF_LIB) \
+					-lrt -ldl -lcrypto -lcyaml
 
 SOURCES       = jhu_hmi.cpp \
 		mask1.cpp \

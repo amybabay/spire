@@ -575,7 +575,7 @@ EVP_PKEY *load_key_from_file(const char *filepath, int is_private)
     FILE *fp = fopen(filepath, "r");
     if (!fp)
     {
-        fprintf(stderr, "Error opening key file: %s\n", filepath);
+        perror("Error opening key file");
         return NULL;
     }
 

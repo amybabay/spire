@@ -87,6 +87,8 @@ int sub_arr_len;
 int tx_arr_len;
 int32u num_jhu_sub;
 
+char config_path[256] = "../prime/bin/received_configs/latest.yaml";  
+
 /*Functions*/
 void Usage(int, char **);
 void init();
@@ -113,18 +115,19 @@ int main(int argc, char **argv)
     pthread_t m_tid, pi_tid;
     /*int remove_me;*/
 
+    setlinebuf(stdout);
+    
+    Usage(argc, argv);
 
-    struct config *cfg = load_yaml_config("../received_configs/conf.yaml");
+    struct config *cfg = load_yaml_config(config_path);
+
     if (cfg == NULL)
     {
         printf("Failed to parse config file.\n");
         return EXIT_FAILURE;
     }
 
-    setlinebuf(stdout);
-    Init_SM_Replicas(); // call before usage to check that we get the right args for our type
-
-    Usage(argc, argv);
+    Init_SM_Replicas(cfg); 
 
     printf("INIT\n");
     init();
@@ -150,16 +153,19 @@ int main(int argc, char **argv)
 
     // initalize the IPC communication with the ITRC
     memset(&itrc_main, 0, sizeof(itrc_data));
-    sprintf(itrc_main.prime_keys_dir, "%s", (char *)SM_PRIME_KEYS);
-    sprintf(itrc_main.sm_keys_dir, "%s", (char *)SM_SM_KEYS);
+    // sprintf(itrc_main.prime_keys_dir, "%s", (char *)SM_PRIME_KEYS);
+    // sprintf(itrc_main.sm_keys_dir, "%s", (char *)SM_SM_KEYS);
     sprintf(itrc_main.ipc_config, "%s%d", (char *)CONFIG_AGENT, My_Global_ID);
     sprintf(itrc_main.ipc_local, "%s%d", (char *)SM_IPC_MAIN, My_Global_ID);
     sprintf(itrc_main.ipc_remote, "%s%d", (char *)SM_IPC_ITRC, My_Global_ID);
     ipc_sock = IPC_DGram_Sock(itrc_main.ipc_local);
 
     memset(&itrc_thread, 0, sizeof(itrc_data));
-    sprintf(itrc_thread.prime_keys_dir, "%s", (char *)SM_PRIME_KEYS);
-    sprintf(itrc_thread.sm_keys_dir, "%s", (char *)SM_SM_KEYS);
+
+    itrc_thread.cfg = cfg;
+
+    // sprintf(itrc_thread.prime_keys_dir, "%s", (char *)SM_PRIME_KEYS);
+    // sprintf(itrc_thread.sm_keys_dir, "%s", (char *)SM_SM_KEYS);
     sprintf(itrc_thread.ipc_config, "%s%d", (char *)CONFIG_AGENT, My_Global_ID);
     sprintf(itrc_thread.ipc_local, "%s%d", (char *)SM_IPC_ITRC, My_Global_ID);
     sprintf(itrc_thread.ipc_remote, "%s%d", (char *)SM_IPC_MAIN, My_Global_ID);
@@ -302,17 +308,17 @@ int Verify_Config_msg(signed_message *mess)
 void Usage(int argc, char **argv)
 {
     My_ID = 0;
-    My_Global_Configuration_Number=0;
-    PartOfConfig=1;
+    My_Global_Configuration_Number = 0;
+    PartOfConfig = 1;
 
-    if (argc < 4 || argc > 5) {
-        printf("Usage: %s GLOBAL_ID CURRENT_ID spinesIntAddr:spinesIntPort [spinesExtAddr:spinesExtPort]\n", argv[0]);
+    if (argc < 4 || argc > 7) {
+        printf("Usage: %s GLOBAL_ID CURRENT_ID spinesIntAddr:spinesIntPort [spinesExtAddr:spinesExtPort] [-c config_file]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     sscanf(argv[1], "%d", &My_Global_ID);
     if (My_Global_ID < 1 || My_Global_ID > MAX_NUM_SERVER_SLOTS) {
-        printf("Invalid My_ID: %d\n", My_ID);
+        printf("Invalid Global ID: %d\n", My_Global_ID);
         exit(EXIT_FAILURE);
     }
 
@@ -322,15 +328,17 @@ void Usage(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    if (Is_CC_Replica(My_ID) && argc != 5) {
-        printf("Invalid arguments...\n");
+    if (Is_CC_Replica(My_ID) && argc < 5) {
         printf("Control Center Replicas must have internal and external spines networks specified!\n");
         exit(EXIT_FAILURE);
     }
-    else if (Is_CC_Replica(My_ID) > NUM_CC_REPLICA && argc != 4) {
-        printf("Invalid arguments...\n");
-        printf("Data Center Replicas should only have internal spines network specified!\n");
-        exit(EXIT_FAILURE);
+
+    // Optional args (e.g., -c)
+    for (int i = 4; i < argc - 1; i++) {
+        if (strcmp(argv[i], "-c") == 0) {
+            strncpy(config_path, argv[i + 1], sizeof(config_path) - 1);
+            config_path[sizeof(config_path) - 1] = '\0';
+        }
     }
 
     /* while (--argc > 0) {

@@ -379,24 +379,24 @@ void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
 				EVP_PKEY *decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
 				if (!decrypted_pkey)
 				{
-					Alarm(EXIT, "[DECRYPTION] Failed to decrypt instance private key for replica %u\n", rep->instance_id);
+					Alarm(EXIT, "Failed to decrypt instance private key for replica %u\n", rep->instance_id);
 				}
 				private_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
 				if (!private_rsa)
 				{
-					Alarm(EXIT, "[KEY CONVERSION] EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
+					Alarm(EXIT, "EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
 				}
 				EVP_PKEY_free(decrypted_pkey);
 
 				decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
 				if (!decrypted_pkey)
 				{
-					Alarm(EXIT, "[DECRYPTION] Failed to decrypt instance private key for client portion of replica %u\n", rep->instance_id);
+					Alarm(EXIT, "Failed to decrypt instance private key for client portion of replica %u\n", rep->instance_id);
 				}
 				private_client_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
 				if (!private_client_rsa)
 				{
-					Alarm(EXIT, "[KEY CONVERSION] EVP_PKEY_get1_RSA failed for client portion of replica %u\n", rep->instance_id);
+					Alarm(EXIT, "EVP_PKEY_get1_RSA failed for client portion of replica %u\n", rep->instance_id);
 				}
 				EVP_PKEY_free(decrypted_pkey);
 			}
@@ -425,7 +425,8 @@ void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
 
 				tpm_privkey = load_key_from_file(host->permanent_key_location, 1);
 				if (!tpm_privkey)
-					Alarm(EXIT, "Failed to load TPM key for client %d\n", client->client_id);
+					Alarm(EXIT, "Failed to load TPM key for client %d from path %s\n", client->client_id, host->permanent_key_location);
+					
 
 				private_client_rsa = EVP_PKEY_get1_RSA(
 					load_decrypted_key(client->encrypted_instance_private_key, tpm_privkey));
