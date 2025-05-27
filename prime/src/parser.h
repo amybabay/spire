@@ -74,8 +74,8 @@ struct site
     struct replica *replicas;
     unsigned replicas_count;
 
-    struct client *clients; 
-    unsigned clients_count; 
+    struct client *clients;
+    unsigned clients_count;
 };
 
 struct service_keys
@@ -107,5 +107,8 @@ struct host *find_host_for_replica(struct site *site, const char *host_name);
 // UNUSED
 // int save_yaml_config(const char *yaml_file, struct config *cfg);
 // int generate_topology(struct config *cfg);
+
+struct host *find_host_by_instance_id(const struct config *cfg, int instance_id);
+const char *find_host_ip_for_client_id(const struct config *cfg, int client_id, int is_hmi);
 
 #endif // PARSER_H

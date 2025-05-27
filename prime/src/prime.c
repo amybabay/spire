@@ -123,17 +123,14 @@ int main(int argc, char **argv)
   // Ignore the SIGPIPE signal, handle manually with socket send error
   signal(SIGPIPE, SIG_IGN);
 
-  // NEW: Load Yaml Config
+  // Load Yaml Config
   struct config *cfg = load_yaml_config(config_path);
   if (cfg == NULL)
   {
     Alarm(EXIT, "Failed to parse config file.\n");
   }
 
-  /* Load server addresses from configuration file */
-  // UTIL_Load_Addresses();
-
-  // NEW: Load Spines Addresses
+  // Load Spines Addresses
   UTIL_Load_Addresses_From_Config(cfg);
 
   ERROR_WRAPPER_Initialize();
@@ -142,17 +139,9 @@ int main(int argc, char **argv)
   Init_Memory_Objects();
   Init_Network();
 
-  /* Initialize RSA Keys */
-  /* PRTODO: eventually change this to loading TPM public keys from ROM */
+  // Read keys from config
   OPENSSL_RSA_Init();
-
-  // OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, RSA_SERVER,"./keys");              OLD FUNCTION
-  // TC_Read_Public_Key("./keys");                                              OLD FUNCTION
-  // TC_Read_Partial_Key(VAR.My_Server_ID, 1, "./keys"); /* only "1" site */    OLD FUNCTION
-
-  // NEW: Read keys from config
   OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, cfg);
-
   TC_Read_Public_Key_From_Config(cfg);
   TC_Read_Partial_Key_From_Config(VAR.My_Server_ID, cfg);
 

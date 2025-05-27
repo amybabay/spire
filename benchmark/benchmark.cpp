@@ -231,17 +231,16 @@ void clean_exit(int signum)
 // Intialize Data Structures
 static void init(int ac, char **av)
 {
-    char *ip_ptr;
     int poll_freq;
     //char filename[128];
     struct timeval now;
     
-    if (ac < 5 || ac > 7) {
-        printf("Usage: %s ID spinesAddr:spinesPort Poll_Frequency(usec) Num_Polls [-c config_file]\n", av[0]);
+    if (ac < 4 || ac > 6) {
+        printf("Usage: %s CLIENT_ID Poll_Frequency(usec) Num_Polls [-c config_file]\n", av[0]);
         exit(EXIT_FAILURE);
     }
 
-    for (int i = 5; i < ac - 1; i++) {
+    for (int i = 4; i < ac - 1; i++) {
         if (strcmp(av[i], "-c") == 0) {
             strncpy(config_path, av[i + 1], sizeof(config_path) - 1);
             config_path[sizeof(config_path) - 1] = '\0';
@@ -254,9 +253,8 @@ static void init(int ac, char **av)
         exit(EXIT_FAILURE);
     }
 
-    My_Global_Configuration_Number=0;
+    My_Global_Configuration_Number=cfg->configuration_id;
     Init_SM_Replicas(cfg);
-
 
     // Net Setup
     seq.seq_num = 1;
@@ -266,6 +264,12 @@ static void init(int ac, char **av)
     sscanf(av[1], "%d", &My_ID);
     Prime_Client_ID = MAX_NUM_SERVER_SLOTS + My_ID;
     My_IP = getIP();
+
+    const char *ip = find_host_ip_for_client_id(cfg, My_ID, 0);
+    if (!ip) {
+        printf("Could not find IP for client_id %d in configuration\n", My_ID);
+        exit(EXIT_FAILURE);
+    }
 
     // Setup IPC for the RTU Proxy main thread
     memset(&itrc_main, 0, sizeof(itrc_data));
@@ -282,13 +286,9 @@ static void init(int ac, char **av)
     memset(&itrc_thread, 0, sizeof(itrc_data));
     sprintf(itrc_thread.ipc_local, "%s%d", (char *)BM_IPC_ITRC, My_ID);
     sprintf(itrc_thread.ipc_remote, "%s%d", (char *)BM_IPC_MAIN, My_ID);
-    // sprintf(itrc_thread.prime_keys_dir, "%s", (char *)PROXY_PRIME_KEYS);
-    // sprintf(itrc_thread.sm_keys_dir, "%s", (char *)PROXY_SM_KEYS);
-    ip_ptr = strtok(av[2], ":");
-    sprintf(itrc_thread.spines_ext_addr, "%s", ip_ptr);
-    ip_ptr = strtok(NULL, ":");
-    sscanf(ip_ptr, "%d", &itrc_thread.spines_ext_port);
-
+    strncpy(itrc_thread.spines_ext_addr, ip, sizeof(itrc_thread.spines_ext_addr) - 1);
+    itrc_thread.spines_ext_addr[sizeof(itrc_thread.spines_ext_addr) - 1] = '\0';
+    itrc_thread.spines_ext_port = SPINES_EXT_PORT;
     itrc_thread.cfg = cfg;
 
     printf("MS2022: Bm iterc thread ipc_remote is %s\n",itrc_thread.ipc_remote);

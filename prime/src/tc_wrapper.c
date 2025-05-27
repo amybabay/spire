@@ -143,7 +143,7 @@ char *write_temp_file(const char *prefix, const char *content) {
     }
 
     fclose(fp);
-    return strdup(tmp_path);  // Must be freed later
+    return strdup(tmp_path);  
 }
 
 /**

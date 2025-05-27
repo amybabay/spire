@@ -381,23 +381,19 @@ void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
 				{
 					Alarm(EXIT, "Failed to decrypt instance private key for replica %u\n", rep->instance_id);
 				}
+
 				private_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
 				if (!private_rsa)
 				{
 					Alarm(EXIT, "EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
 				}
-				EVP_PKEY_free(decrypted_pkey);
-
-				decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
-				if (!decrypted_pkey)
-				{
-					Alarm(EXIT, "Failed to decrypt instance private key for client portion of replica %u\n", rep->instance_id);
-				}
+				
 				private_client_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
 				if (!private_client_rsa)
 				{
 					Alarm(EXIT, "EVP_PKEY_get1_RSA failed for client portion of replica %u\n", rep->instance_id);
 				}
+				
 				EVP_PKEY_free(decrypted_pkey);
 			}
 		}

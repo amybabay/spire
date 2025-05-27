@@ -210,5 +210,67 @@ struct host *find_host_for_replica(struct site *site, const char *host_name)
             return &site->hosts[j];
         }
     }
-    return NULL; 
+    return NULL;
+}
+
+struct host *find_host_by_instance_id(const struct config *cfg, int instance_id) {
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
+        struct site *site = &cfg->sites[i];
+        for (unsigned j = 0; j < site->replicas_count; j++) {
+            if (site->replicas[j].instance_id == instance_id) {
+                return find_host_for_replica(site, site->replicas[j].host);
+            }
+        }
+    }
+    return NULL;
+}
+
+/**
+ * Finds the IP address of the host running a client with the specified client_id.
+ * If is_hmi is true, it searches for a client of type HMI with the matching client_id.
+ *
+ * @param cfg The parsed configuration structure.
+ * @param client_id The ID of the client to search for.
+ * @param is_hmi If true, search for a client with type HMI.
+ * @return The IP address of the corresponding host, or NULL if not found.
+ */
+const char *find_host_ip_for_client_id(const struct config *cfg, int client_id, int is_hmi)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+
+        if (site->type != CLIENT)
+            continue;
+
+        for (unsigned j = 0; j < site->clients_count; j++)
+        {
+            struct client *c = &site->clients[j];
+
+            if (is_hmi)
+            {
+                if (strcmp(c->type, "hmi") == 0 && c->client_id == (unsigned)client_id)
+                {
+                    struct host *h = find_host_for_replica(site, c->host);
+                    if (h != NULL)
+                    {
+                        return h->ip;
+                    }
+                }
+            }
+            else
+            {
+                if (c->client_id == (unsigned)client_id)
+                {
+                    struct host *h = find_host_for_replica(site, c->host);
+                    if (h != NULL)
+                    {
+                        return h->ip;
+                    }
+                }
+            }
+        }
+    }
+
+    return NULL;
 }

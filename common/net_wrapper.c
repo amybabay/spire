@@ -106,16 +106,18 @@ void Init_SM_Replicas(struct config *cfg)
     int id, site_index, cc_rep = 0;
     int site = 0;
     
+    // Reset counters
     Curr_num_SM = 0;
     Curr_num_CC = 0;
     Curr_num_sites = cfg->sites_count;
     
-    // count control centers
+    // Count control centers
     for (unsigned i = 0; i < cfg->sites_count; i++) {
         if (cfg->sites[i].type == CONTROL_CENTER)
             Curr_num_CC++;
     }
 
+    // Clear arrays
     memset(Curr_Ext_Site_Addrs, 0, sizeof(Curr_Ext_Site_Addrs));
     memset(Curr_Int_Site_Addrs, 0, sizeof(Curr_Int_Site_Addrs));
     memset(Curr_All_Sites, 0, sizeof(Curr_All_Sites));
@@ -129,20 +131,29 @@ void Init_SM_Replicas(struct config *cfg)
             struct replica *r = &s->replicas[j];
             id = r->instance_id;
 
-            snprintf(Curr_Ext_Site_Addrs[id - 1], sizeof(Curr_Ext_Site_Addrs[id - 1]), "%s", r->spines_external_daemon);
-            snprintf(Curr_Int_Site_Addrs[id - 1], sizeof(Curr_Int_Site_Addrs[id - 1]), "%s", r->spines_internal_daemon);
+            // Set external and internal Spines daemon addresses by replica ID
+            struct host *host = find_host_for_replica(s, r->spines_internal_daemon);
+            if (host->runs_spines_external)
+                snprintf(Curr_Ext_Site_Addrs[id - 1], sizeof(Curr_Ext_Site_Addrs[id - 1]), "%s", host->ip);
+            if (host->runs_spines_internal)
+                snprintf(Curr_Int_Site_Addrs[id - 1], sizeof(Curr_Int_Site_Addrs[id - 1]), "%s", host->ip);
+
+            // Map replica ID to its site's index
             Curr_All_Sites[id - 1] = site_index;
 
+            // If the site is a control center
             if (site_index < Curr_num_CC) {
                 Curr_CC_Replicas[cc_rep] = id;
                 Curr_CC_Sites[cc_rep] = site_index;
                 cc_rep++;
             }
 
+            // Total number of replicas encountered
             Curr_num_SM++;
         }
     }
 
+    // Store total number of control center replicas
     Curr_num_CC_Replica = cc_rep;
 }
 

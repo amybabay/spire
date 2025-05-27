@@ -86,23 +86,16 @@ char config_path[256] = "../prime/bin/received_configs/latest.yaml";
 
 void itrc_init(int ac, char **av)
 {
-    char *ip;
+    // char *ip;
     struct timeval now;
-
-    // Usage check
-    if (ac < 2 || ac > 5)
+    // Parse optional config path
+    for (int i = 1; i < ac - 1; ++i)
     {
-        printf("Usage: %s spinesAddr:spinesPort [-port=PORT] [-c config_file]\n", av[0]);
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 2; i < ac; ++i)
-    {
-
-        if (strcmp(av[i], "-c") == 0 && i + 1 < ac)
+        if (strcmp(av[i], "-c") == 0)
         {
             strncpy(config_path, av[i + 1], sizeof(config_path) - 1);
             config_path[sizeof(config_path) - 1] = '\0';
-            i++;
+            i++; // skip config path
         }
     }
 
@@ -114,8 +107,10 @@ void itrc_init(int ac, char **av)
         return;
     }
 
-    My_Global_Configuration_Number = 0;
+    My_Global_Configuration_Number = cfg->configuration_id;
     Init_SM_Replicas(cfg);
+
+    
 
     // NET Setup
     gettimeofday(&now, NULL);
@@ -123,6 +118,12 @@ void itrc_init(int ac, char **av)
     Seq_Num = 1;
     Type = HMI_TYPE;
     My_ID = JHU;
+    const char *ip = find_host_ip_for_client_id(cfg, My_ID, 1);
+    if (!ip)
+    {
+        printf("Could not find spines IP for client_id %d in config.\n", My_ID);
+        exit(EXIT_FAILURE);
+    }
     // Prime_Client_ID = (NUM_SM + 1) + MAX_EMU_RTU + My_ID;
     Prime_Client_ID = MAX_NUM_SERVER_SLOTS + MAX_EMU_RTU + My_ID;
     My_IP = getIP();
@@ -140,10 +141,9 @@ void itrc_init(int ac, char **av)
     // sprintf(itrc_out.sm_keys_dir, "%s", (char *)HMI_SM_KEYS);
     sprintf(itrc_out.ipc_local, "%s%d", (char *)HMI_IPC_ITRC, My_ID);
     sprintf(itrc_out.ipc_remote, "%s%d", (char *)HMI_IPC_MAIN, My_ID);
-    ip = strtok(av[1], ":");
-    sprintf(itrc_out.spines_ext_addr, "%s", ip);
-    ip = strtok(NULL, ":");
-    sscanf(ip, "%d", &itrc_out.spines_ext_port);
+    strncpy(itrc_out.spines_ext_addr, ip, sizeof(itrc_out.spines_ext_addr) - 1);
+    itrc_out.spines_ext_addr[sizeof(itrc_out.spines_ext_addr) - 1] = '\0';
+    itrc_out.spines_ext_port = SPINES_EXT_PORT;
     itrc_out.cfg = cfg;
 }
 

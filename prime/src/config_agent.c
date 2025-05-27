@@ -63,6 +63,7 @@ static char latest_config_path[512] = "received_configs/latest.yaml";
 
 static char Spines_Addr[32] = DEFAULT_SPINES_ADDR;
 static int Spines_Port = DEFAULT_SPINES_PORT;
+static char Host_Name[128] = {0}; // Empty string by default
 
 static void Init_Network(void);
 static void Handle_Conf_Message(int s, int source, void *dummy);
@@ -74,9 +75,11 @@ int Verify_Config_Signature(const char *buf, size_t len);
 int Handle_Verified_Config(const char *yaml_data, size_t yaml_len);
 void Cleanup_Fragments(void);
 
+static struct host *find_host_by_name(struct config *cfg, const char *name);
+void start_components_from_config(const struct config *cfg, const struct host *me);
+int kill_all_components(void);
+
 void generate_spines_topologies(const struct config *cfg);
-char *get_my_ip(void);
-// void decrypt_private_keys(struct config *cfg, const char *my_ip);
 
 int main(int argc, char **argv)
 {
@@ -91,7 +94,7 @@ int main(int argc, char **argv)
     E_init();
 
     // attach a handler to the Spines socket for READ events
-    E_attach_fd(Ctrl_Spines, READ_FD, Handle_Conf_Message, NULL, NULL, HIGH_PRIORITY);
+    E_attach_fd(Ctrl_Spines, READ_FD, Handle_Conf_Message, 0, NULL, HIGH_PRIORITY);
 
     // Start the event loop
     E_handle_events();
@@ -120,15 +123,6 @@ static void Init_Network(void)
     }
 
     Alarm(PRINT, "Config_Agent: Spines multicast network ready\n");
-}
-
-void Reconnect_Spines_Socket()
-{
-    E_detach_fd(Ctrl_Spines, READ_FD);
-    close(Ctrl_Spines);
-
-    Init_Network(); // re-creates the multicast socket and rejoins the group
-    E_attach_fd(Ctrl_Spines, READ_FD, Handle_Conf_Message, NULL, NULL, HIGH_PRIORITY);
 }
 
 static void Handle_Conf_Message(int s, int source, void *dummy)
@@ -366,7 +360,12 @@ int Handle_Verified_Config(const char *buf, size_t len)
         return -1;
 
     generate_spines_topologies(cfg);
-    char *my_ip = get_my_ip();
+    struct host *me = find_host_by_name(cfg, Host_Name);
+    if (!me)
+    {
+        Alarm(EXIT, "Could not find host '%s' in config\n", Host_Name);
+    }
+    const char *my_ip = me->ip;
     kill_all_components();
     sleep(1);
 
@@ -402,24 +401,20 @@ int Handle_Verified_Config(const char *buf, size_t len)
     }
 
     // Also save a consistent copy as latest.yaml
-    const char *latest_path = "received_configs/latest.yaml";
-    FILE *latest_fp = fopen(latest_path, "w");
+    FILE *latest_fp = fopen(latest_config_path, "w");
     if (!latest_fp)
     {
-        Alarm(PRINT, "Config_Agent: Failed to write latest config to %s\n", latest_path);
+        Alarm(PRINT, "Config_Agent: Failed to write latest config to %s\n", latest_config_path);
     }
     else
     {
         fwrite(yaml_data, 1, yaml_len, latest_fp);
         fclose(latest_fp);
-        Alarm(PRINT, "Config_Agent: Updated %s with latest config\n", latest_path);
+        Alarm(PRINT, "Config_Agent: Updated %s with latest config\n", latest_config_path);
     }
 
-    start_components_from_config(cfg, my_ip);
-    // sleep(5);
-    // Reconnect_Spines_Socket();
+    start_components_from_config(cfg, me);
 
-    free(my_ip);
     free_yaml_config(&cfg);
     return 0;
 }
@@ -442,10 +437,10 @@ void Cleanup_Fragments(void)
     received_fragments = 0;
     expected_fragments = -1;
 }
-
 static void Usage(int argc, char **argv)
 {
     int ret;
+    int got_host_name = 0;
 
     while (--argc > 0)
     {
@@ -472,18 +467,37 @@ static void Usage(int argc, char **argv)
             argc--;
             argv++;
         }
+        else if ((argc > 1) && (!strncmp(*argv, "-h", 2)))
+        {
+            ret = snprintf(Host_Name, sizeof(Host_Name), "%s", argv[1]);
+            if (ret < 0 || ret >= sizeof(Host_Name))
+            {
+                Alarm(PRINT, "Invalid host name: %s\n", argv[1]);
+                Print_Usage();
+            }
+            got_host_name = 1;
+            argc--;
+            argv++;
+        }
         else
         {
             Print_Usage();
         }
     }
+
+    if (!got_host_name)
+    {
+        Alarm(PRINT, "Missing required argument: -h host_name\n");
+        Print_Usage();
+    }
 }
 
 static void Print_Usage(void)
 {
-    Alarm(EXIT, "Usage: ./config_agent\n"
+    Alarm(EXIT, "Usage: ./config_agent -h host_name\n"
                 "    [-a spines_addr] : IP address of Spines daemon to connect to. Default: %s\n"
-                "    [-p spines_port] : Port for Spines configuration network. Default: %d\n",
+                "    [-p spines_port] : Port for Spines configuration network. Default: %d\n"
+                "    -h host_name     : REQUIRED. Host name to match in config.\n",
           DEFAULT_SPINES_ADDR, DEFAULT_SPINES_PORT);
 }
 
@@ -506,6 +520,20 @@ static int ip_in_list(const char *ip, DaemonEntry *list, size_t count)
             return 1;
     }
     return 0;
+}
+
+static struct host *find_host_by_name(struct config *cfg, const char *name)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
+            if (strcmp(site->hosts[j].name, name) == 0)
+                return &site->hosts[j];
+        }
+    }
+    return NULL;
 }
 
 /**
@@ -671,7 +699,7 @@ void generate_spines_topologies(const struct config *cfg)
 
     fprintf(out, "\nHosts {\n");
     for (size_t i = 0; i < replica_ext_count; i++)
-        fprintf(out, "    %u %s\n", i + 1, external_replicas[i].ip);
+        fprintf(out, "    %zu %s\n", i + 1, external_replicas[i].ip);
     for (size_t i = 0; i < client_ext_count; i++)
         fprintf(out, "    %u %s\n", (unsigned)(replica_ext_count + i + 1), external_clients[i].ip);
     fprintf(out, "}\n\n");
@@ -690,65 +718,6 @@ void generate_spines_topologies(const struct config *cfg)
     }
     fprintf(out, "}\n");
     fclose(out);
-}
-
-/**
- * Retrieves the first non-loopback IPv4 address of the current host.
- *
- * Iterates over the system's network interfaces and returns the first non-loopback
- * IPv4 address as a newly allocated string.
- *
- * @return A malloc'ed string containing the IP address, or NULL on failure.
- *         The caller is responsible for freeing the returned string.
- */
-char *get_my_ip()
-{
-    struct ifaddrs *ifaddr, *ifa;
-    char *ip = NULL;
-
-    if (getifaddrs(&ifaddr) == -1)
-        return NULL;
-
-    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next)
-    {
-        if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET)
-            continue;
-
-        struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
-        if (strcmp(ifa->ifa_name, "lo") == 0) // Skip loopback
-            continue;
-
-        ip = strdup(inet_ntoa(sa->sin_addr));
-        break;
-    }
-
-    freeifaddrs(ifaddr);
-    return ip;
-}
-
-/**
- * Finds the host entry in the config that matches the given IP address.
- *
- * Searches all sites and their hosts for a host whose `ip` field matches `my_ip`.
- *
- * @param cfg    Pointer to the loaded configuration structure.
- * @param my_ip  The IP address to search for (as returned by get_my_ip()).
- *
- * @return Pointer to the matching host struct, or NULL if not found.
- */
-static struct host *find_my_host(struct config *cfg, const char *my_ip)
-{
-    for (unsigned i = 0; i < cfg->sites_count; i++)
-    {
-        struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->hosts_count; j++)
-        {
-            struct host *h = &site->hosts[j];
-            if (strcmp(h->ip, my_ip) == 0)
-                return h;
-        }
-    }
-    return NULL;
 }
 
 /**
@@ -884,22 +853,26 @@ int kill_all_components()
     return killed;      // return number of killed processes
 }
 
-void start_components_from_config(const struct config *cfg, const char *my_ip)
-{
-    system("rm -f /tmp/spines8100 /tmp/spines8101 /tmp/spines8120 /tmp/spines8200 "
-           "/tmp/spines8100data /tmp/spines8120data /tmp/spines8200data");
+void remove_spines_tmp_files() {
+    char cmd[512];
 
-    struct host *me = find_my_host(cfg, my_ip);
-    if (!me)
-    {
-        Alarm(EXIT, "Could not find current host (%s) in config\n", my_ip);
+    snprintf(cmd, sizeof(cmd),
+        "rm -f /tmp/spines%d /tmp/spines%ddata /tmp/spines%d /tmp/spines%ddata",
+        SPINES_PORT, SPINES_PORT, SPINES_EXT_PORT, SPINES_EXT_PORT);
+
+    int ret = system(cmd);
+    if (ret != 0) {
+        fprintf(stderr, "Failed to remove spines tmp files with command: %s\n", cmd);
     }
+}
+
+// TODO: take in spines internal,external,ctrl port parameter?
+void start_components_from_config(const struct config *cfg, const struct host *me)
+{
+    // if passing port parameters convert this to remove spines<port> tmp files
+    remove_spines_tmp_files();
 
     char cmd[1024];
-
-    // Always start spines ctrl
-    // snprintf(cmd, sizeof(cmd), "cd ../../spines/daemon && ./spines -p 8100 -c spines_ctrl.conf -I %s > ../../prime/bin/logs/spines_ctrl.log &", my_ip);
-    // system(cmd);
 
     Alarm(PRINT, "\n=== Checking for Replicas to Start ===");
 
@@ -920,8 +893,8 @@ void start_components_from_config(const struct config *cfg, const char *my_ip)
                 if (me->runs_spines_internal)
                 {
                     snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p 8100 -c spines_int.conf -I %s > ../../prime/bin/logs/spines_int.log &",
-                             my_ip);
+                             "cd ../../spines/daemon && ./spines -p %d -c spines_int.conf -I %s > ../../prime/bin/logs/spines_int.log &",
+                             SPINES_PORT, me->ip);
                     Alarm(PRINT, "\nStarting internal Spines: %s", cmd);
                     system(cmd);
                 }
@@ -930,8 +903,8 @@ void start_components_from_config(const struct config *cfg, const char *my_ip)
                 if (me->runs_spines_external)
                 {
                     snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p 8120 -c spines_ext.conf -I %s > ../../prime/bin/logs/spines_ext.log &",
-                             my_ip);
+                             "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s > ../../prime/bin/logs/spines_ext.log &",
+                             SPINES_EXT_PORT, me->ip);
                     Alarm(PRINT, "\nStarting external Spines: %s", cmd);
                     system(cmd);
                 }
@@ -939,8 +912,10 @@ void start_components_from_config(const struct config *cfg, const char *my_ip)
                 Alarm(PRINT, "\nStarting replica instance %u from site %u", r->instance_id, i);
                 // Pass config to scada_master and prime
                 snprintf(cmd, sizeof(cmd),
-                         "cd ../../scada_master && ./scada_master %u %u %s:8100 %s:8120 -c ../prime/bin/received_configs/latest.yaml > ../prime/bin/logs/sm.log &",
-                         r->instance_id, r->instance_id, my_ip, my_ip);
+                         "cd ../../scada_master && ./scada_master %u %u > ../prime/bin/logs/sm.log &",
+                         r->instance_id, r->instance_id,
+                         me->ip, SPINES_PORT, me->ip, SPINES_EXT_PORT);
+
                 Alarm(PRINT, "\nStarting scada_master: %s", cmd);
                 system(cmd);
 
@@ -966,34 +941,38 @@ void start_components_from_config(const struct config *cfg, const char *my_ip)
                     // Client programs have been refactored to default to received_configs/latest.yaml
                     // so no config path argument is necessary but can be passed for each with -c <path>
                     snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p 8120 -c spines_ext.conf -I %s > logs/spines_ext.log &",
-                             my_ip);
+                             "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s > logs/spines_ext.log &",
+                             SPINES_EXT_PORT, me->ip);
                     Alarm(PRINT, "\nStarting external Spines (client host): %s", cmd);
                     system(cmd);
 
                     if (strcmp(c->type, "JHU") == 0)
                     {
-                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./jhu_hmi/jhu_hmi <IP>:<PORT> &");
+                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./jhu_hmi/jhu_hmi &");
                         Alarm(PRINT, "\nStarting JHU HMI: %s", cmd);
                     }
                     else if (strcmp(c->type, "PNNL") == 0)
                     {
-                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./pnnl_hmi/pnnl_hmi <IP>:<PORT> &");
+                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./pnnl_hmi/pnnl_hmi &");
                         Alarm(PRINT, "\nStarting PNNL HMI: %s", cmd);
                     }
                     else if (strcmp(c->type, "EMS") == 0)
                     {
-                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./ems_hmi/ems_hmi <IP>:<PORT> &");
+                        snprintf(cmd, sizeof(cmd), "cd hmis/ && ./ems_hmi/ems_hmi &");
                         Alarm(PRINT, "\nStarting EMS HMI: %s", cmd);
                     }
                     else if (strcmp(c->type, "proxy") == 0)
                     {
-                        snprintf(cmd, sizeof(cmd), "cd proxy/ && ./proxy <ID> <IP>:<PORT> <Num_RTU_Emulated> &");
+                        // snprintf(cmd, sizeof(cmd), "cd proxy/ && ./proxy <ID> <Num_RTU_Emulated> &");
+                        snprintf(cmd, sizeof(cmd), "cd proxy/ && ./proxy <ID> <Num_RTU_Emulated> &");
+
                         Alarm(PRINT, "\nStarting Proxy Client: %s", cmd);
                     }
                     else if (strcmp(c->type, "benchmark") == 0)
                     {
-                        snprintf(cmd, sizeof(cmd), "cd benchmark/ && ./benchmark <ID> <IP>:<PORT> <Poll_Frequency(usec)> <Num_Polls> &");
+                        // snprintf(cmd, sizeof(cmd), "cd benchmark/ && ./benchmark <ID> <Poll_Frequency(usec)> <Num_Polls> &");
+                        snprintf(cmd, sizeof(cmd), "cd benchmark/ && ./benchmark <ID> <Poll_Frequency(usec)> <Num_Polls> &");
+
                         Alarm(PRINT, "\nStarting Benchmark Client: %s", cmd);
                     }
                     else

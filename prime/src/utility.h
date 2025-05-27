@@ -87,6 +87,7 @@ int32u NET_Add_To_Pending_Messages(signed_message *mess, int32u dest_bits,
 
 /* Network configuration functions */
 void  UTIL_Load_Addresses               (void);
+void UTIL_Load_Addresses_From_Config    (struct config *cfg);
 void  UTIL_Test_Server_Address_Functions(void); 
 int32 UTIL_Get_Server_Address           (int32u server); 
 int32 UTIL_Get_Server_Spines_Address    (int32u server); 
