@@ -247,9 +247,9 @@ const char *find_host_ip_for_client_id(const struct config *cfg, int client_id, 
         {
             struct client *c = &site->clients[j];
 
-            if (is_hmi)
+            if (is_hmi)     // its an hmi
             {
-                if (strcmp(c->type, "hmi") == 0 && c->client_id == (unsigned)client_id)
+                if (strcmp(c->type, "EMS") == 0 || strcmp(c->type, "PNNL") == 0 || strcmp(c->type, "JHU") == 0 && c->client_id == (unsigned)client_id)
                 {
                     struct host *h = find_host_for_replica(site, c->host);
                     if (h != NULL)
@@ -258,7 +258,7 @@ const char *find_host_ip_for_client_id(const struct config *cfg, int client_id, 
                     }
                 }
             }
-            else
+            else            // its a proxy or benchmark
             {
                 if (c->client_id == (unsigned)client_id)
                 {

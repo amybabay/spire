@@ -59,7 +59,8 @@ LIBS=-lpthread ../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
            ../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
 		   $(DNP3_DIR)/lib/libasiodnp3.a $(DNP3_DIR)/lib/libasiopal.a \
 		   $(DNP3_DIR)/lib/libopendnp3.a $(DNP3_DIR)/lib/libopenpal.a \
-		   -lrt -ldl -lcrypto -lm
+		   ../prime/src/libreconfiguration.a \
+		   -lrt -ldl -lcrypto -lm -lcyaml
 INC= -I ../prime/stdutil/include -I ../spines/libspines/ -I $(DNP3_DIR)/include
 TARGET=dnp3_master
 OBJECTS=main.o \

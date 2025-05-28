@@ -60,7 +60,9 @@ LFLAGS        = -Wl,-O1
 LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(PRIME)/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 					$(SPINES)/libspines/libspines.a $(PRIME)/stdutil/lib/libstdutil.a \
-					$(PRIME)/libspread-util/lib/libspread-util.a -lrt -ldl -lcrypto
+					$(PRIME)/libspread-util/lib/libspread-util.a 
+					$(PRIME)/src/libreconfiguration.a
+					-lrt -ldl -lcrypto
 
 SOURCES       = heco_hmi.cpp \
 		mask1.cpp \

@@ -66,6 +66,8 @@ LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(RECONF_LIB) \
 					-lrt -ldl -lcrypto -lcyaml
 
+LDFLAGS += -L/usr/local/lib
+
 SOURCES       = pnnl_hmi.cpp \
 		mask1.cpp \
         master_exec.cpp \

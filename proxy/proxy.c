@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     int ipc_used[NUM_PROTOCOLS];
     int ipc_s[NUM_PROTOCOLS];
     seq_pair *ps;
-    char *ip_ptr;
+    // char *ip_ptr;
     int pid;
     char *buffer;
     char path[MAX_PATH];
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
     // sprintf(itrc_thread.spines_ext_addr, "%s", ip_ptr);
     // ip_ptr = strtok(NULL, ":");
     // sscanf(ip_ptr, "%d", &itrc_thread.spines_ext_port);
-    const char *client_ip = find_host_ip_for_client_id(cfg, My_ID);
+    const char *client_ip = find_host_ip_for_client_id(cfg, My_ID, 0);
     if (!client_ip || strlen(client_ip) == 0)
     {
         printf("Could not find host for client ID %d in config.\n", My_ID);

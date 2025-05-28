@@ -70,6 +70,8 @@ void Usage(int argc, char **argv);
 void Print_Usage(void);
 void Init_Memory_Objects(void);
 
+struct config *cfg = NULL;
+
 char *config_path = "received_configs/latest.yaml"; // default config path
 
 int main(int argc, char **argv)
@@ -124,11 +126,20 @@ int main(int argc, char **argv)
   signal(SIGPIPE, SIG_IGN);
 
   // Load Yaml Config
-  struct config *cfg = load_yaml_config(config_path);
-  if (cfg == NULL)
-  {
-    Alarm(EXIT, "Failed to parse config file.\n");
-  }
+  // struct config *cfg = load_yaml_config(config_path);
+  // if (cfg == NULL)
+  // {
+  //   Alarm(EXIT, "Failed to parse config file.\n");
+  // }
+
+  // VAR.F = cfg->tolerated_byzantine_faults;
+  // VAR.K = cfg->tolerated_unavailable_replicas;
+  // VAR.Num_Servers = (3 * VAR.F + 2 * VAR.K + 1);
+  // if (VAR.Num_Servers < (3 * VAR.F + 2 * VAR.K + 1))
+  // {
+  //   Alarm(PRINT, "Configuration error: NUM_SERVERS is less than 3f+2k+1\n");
+  //   exit(0);
+  // }
 
   // Load Spines Addresses
   UTIL_Load_Addresses_From_Config(cfg);
@@ -181,22 +192,9 @@ void Usage(int argc, char **argv)
   int tmp;
   float tmp2;
 
-  if (MAX_NUM_SERVERS < (3 * NUM_F + 2 * NUM_K + 1))
-  {
-    Alarm(PRINT, "Configuration error: MAX_NUM_SERVERS must be greater than or equal to 3f+2k+1\n");
-    exit(0);
-  }
-
+  int pending_server_id = 1;
   VAR.My_Server_ID = 1;
-  VAR.F = NUM_F;
-  VAR.K = NUM_K;
-  VAR.Num_Servers = (3 * VAR.F + 2 * VAR.K + 1);
-
-  if (VAR.Num_Servers < (3 * NUM_F + 2 * NUM_K + 1))
-  {
-    Alarm(PRINT, "Configuration error: NUM_SERVERS is less than 3f+2k+1\n");
-    exit(0);
-  }
+  
   // MS2022: set initial global incarnation number to 0
   DATA.NM.global_configuration_number = 0;
   DATA.NM.PartOfConfig = 1;
@@ -215,14 +213,8 @@ void Usage(int argc, char **argv)
     /* [-i server_id] */
     if ((argc > 1) && (!strncmp(*argv, "-i", 2)))
     {
-      sscanf(argv[1], "%d", &tmp);
-      VAR.My_Server_ID = tmp;
-      if (VAR.My_Server_ID > VAR.Num_Servers || VAR.My_Server_ID <= 0)
-      {
-        Alarm(PRINT, "Invalid server id: %d.  Index must be between 1 and %d.\n",
-              VAR.My_Server_ID, VAR.Num_Servers);
-        exit(0);
-      }
+      // save for validation later
+      sscanf(argv[1], "%d", &pending_server_id);
       argc--;
       argv++;
     }
@@ -287,6 +279,23 @@ void Usage(int argc, char **argv)
     else
       Print_Usage();
   }
+  cfg = load_yaml_config(config_path);
+  if (cfg == NULL)
+  {
+    Alarm(EXIT, "Failed to parse config file: %s\n", config_path);
+  }
+
+  VAR.F = cfg->tolerated_byzantine_faults;
+  VAR.K = cfg->tolerated_unavailable_replicas;
+  VAR.Num_Servers = (3 * VAR.F + 2 * VAR.K + 1);
+
+  // Validate pending_server_id now that we know the valid range
+  if (pending_server_id > VAR.Num_Servers || pending_server_id <= 0)
+  {
+    Alarm(PRINT, "Invalid server id: %d. Must be between 1 and %d\n", pending_server_id, VAR.Num_Servers);
+    exit(0);
+  }
+  VAR.My_Server_ID = pending_server_id;
 }
 
 void Print_Usage()

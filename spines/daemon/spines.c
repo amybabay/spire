@@ -110,7 +110,7 @@ char            My_Host_Name[HOST_NAME_LEN];
 int16u          Num_Local_Interfaces;
 Interface_ID    My_Interface_IDs[MAX_LOCAL_INTERFACES];
 Network_Address My_Interface_Addresses[MAX_LOCAL_INTERFACES];
-
+ 
 int16           Num_Legs;
 Network_Address Remote_Interface_Addresses[MAX_NETWORK_LEGS];
 Interface_ID    Remote_Interface_IDs[MAX_NETWORK_LEGS];

@@ -24,14 +24,13 @@ RUN git clone https://github.com/tlsa/libcyaml.git /tmp/libcyaml && \
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
 
 # Build Spire core
-RUN make core
+RUN make reconfiguration
 
 # Run setup during build
 RUN python3 /app/spire/check_keys.py && \
     cd /app/spire/example_conf && ./install_conf.sh conf_4
 
-# When container starts, just drop into shell
-# CMD ["/bin/bash"]
+# RUN dnf debuginfo-install -y glibc-2.34-168.el9_6.14.alma.1.x86_64 libyaml-0.2.5-7.el9.x86_64 openssl-libs-3.2.2-6.el9_5.1.x86_64 zlib-1.2.11-40.el9.x86_64
 
 COPY start_spines.py /app/spire/start_spines.py
 

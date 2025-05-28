@@ -74,7 +74,7 @@
 
 /* This flag is used to remove crypto for testing -- this feature eliminates
  * security and Byzantine fault tolerance. */
-#define REMOVE_CRYPTO 0
+#define REMOVE_CRYPTO 1
 
 /*SM2022:  VAR.Num_Servers*/
 extern server_variables VAR;
@@ -601,7 +601,7 @@ void OPENSSL_RSA_Make_Signature(const byte *digest_value, byte *signature)
 	 * assumed to be DIGEST_SIZE bytes. */
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return;
 #endif
 
@@ -640,7 +640,7 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 	RSA *rsa;
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return 1;
 #endif
 
@@ -697,7 +697,7 @@ void OPENSSL_RSA_Sign(const unsigned char *message, size_t message_length,
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return;
 #endif
 
@@ -726,7 +726,7 @@ int OPENSSL_RSA_Verify(const unsigned char *message, size_t message_length,
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return 1;
 #endif
 

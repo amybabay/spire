@@ -133,7 +133,7 @@ void generate_keys_for_host(struct host *host)
     }
 
     // === Internal Key ===
-    EVP_PKEY *internal_key = generate_rsa_key(2048);
+    EVP_PKEY *internal_key = generate_rsa_key(1024);
     if (!internal_key)
     {
         fprintf(stderr, "Failed to generate internal RSA key\n");
@@ -158,7 +158,7 @@ void generate_keys_for_host(struct host *host)
     free_rsa_key(internal_key);
 
     // === External Key ===
-    EVP_PKEY *external_key = generate_rsa_key(2048);
+    EVP_PKEY *external_key = generate_rsa_key(1024);
     if (!external_key)
     {
         fprintf(stderr, "Failed to generate external RSA key\n");
@@ -488,39 +488,27 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
     *pub_key = load_key_from_file("cm_keys/public_key.pem", 0);
     return (*priv_key && *pub_key) ? 0 : -1;
 }
+
 static void Print_Usage(void)
 {
     fprintf(stderr,
             "Usage:\n"
-            "  ./config_generator <simulate_tpm: 0|1> <input_yaml> <output_yaml>\n\n"
+            "  ./config_generator <input_yaml> <output_yaml>\n\n"
             "Arguments:\n"
-            "  simulate_tpm   1 to simulate/generate TPM keys now, 0 to load existing TPM keys\n"
             "  input_yaml     Path to input YAML config file\n"
             "  output_yaml    Path to output signed config file\n");
     exit(EXIT_FAILURE);
 }
 
-static void Usage(int argc, char **argv, int *simulate_tpm, const char **input_yaml, const char **output_yaml)
+static void Usage(int argc, char **argv, const char **input_yaml, const char **output_yaml)
 {
-    if (argc != 4)
-        Print_Usage();
-
-    if (strcmp(argv[1], "1") == 0)
-    {
-        *simulate_tpm = 1;
-    }
-    else if (strcmp(argv[1], "0") == 0)
-    {
-        *simulate_tpm = 0;
-    }
-    else
-    {
-        fprintf(stderr, "Invalid value for simulate_tpm: must be 0 or 1\n\n");
-        Print_Usage();
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <input_yaml> <output_yaml>\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
 
-    *input_yaml = argv[2];
-    *output_yaml = argv[3];
+    *input_yaml = argv[1];
+    *output_yaml = argv[2];
 }
 
 int main(int argc, char *argv[])
@@ -529,9 +517,7 @@ int main(int argc, char *argv[])
     const char *input_path = NULL;
     const char *output_path = NULL;
 
-    Usage(argc, argv, &simulate_tpm, &input_path, &output_path);
-    fprintf(stderr, "[INFO] TPM mode: %s\n",
-            simulate_tpm ? "simulate" : "use real");
+    Usage(argc, argv, &input_path, &output_path);
 
     struct config *cfg = load_and_process_config(input_path, simulate_tpm);
     if (!cfg)
