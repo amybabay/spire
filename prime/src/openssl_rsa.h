@@ -70,7 +70,8 @@ int OPENSSL_RSA_Verify( const unsigned char *message, size_t message_length,
 			int32u type ); 
  
 // void OPENSSL_RSA_Read_Keys( int32u my_number, int32u type, const char *dir ); 
-void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg);
+// void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg);
+void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const char *key_base_path);
 
 void OPENSSL_RSA_Generate_Keys_with_args(int count, const char *keys_dir );
 

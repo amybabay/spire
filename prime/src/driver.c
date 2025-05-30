@@ -180,7 +180,7 @@ int main(int argc, char** argv)
   {
       Alarm(EXIT, "Failed to parse config file.\n");
   }
-  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, cfg);
+  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID,RSA_CLIENT , cfg, ".");
   
   /* sprintf(buf, "latencies/client_%d.lat", My_Client_ID);
   fp = fopen(buf, "w"); */
@@ -864,7 +864,7 @@ void Config_Recv(channel sk, int dummy, void *dummy_p){
 	My_Server_Alive=1;
    } 
   // OPENSSL_RSA_Read_Keys( My_Client_ID, RSA_CLIENT,"/tmp/test_keys/prime" );
-  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, cfg);
+  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, RSA_CLIENT, cfg, ".");
   time_stamp=0;
   num_outstanding_updates = 0;
   }

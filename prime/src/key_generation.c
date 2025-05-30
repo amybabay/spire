@@ -543,28 +543,40 @@ void hybrid_unpack(const char *packed, char **out_enc_key_hex, char **out_cipher
 
 EVP_PKEY *load_public_key_from_pem(const char *pem_str)
 {
-    if (!pem_str)
-    {
+    if (!pem_str) {
         fprintf(stderr, "Error: NULL PEM string provided.\n");
         return NULL;
     }
 
-    BIO *bio = BIO_new_mem_buf((void *)pem_str, -1); // -1 = null-terminated string
-    if (!bio)
-    {
+    BIO *bio = BIO_new_mem_buf((void *)pem_str, -1);
+    if (!bio) {
         fprintf(stderr, "Error: Failed to create BIO for PEM string.\n");
         return NULL;
     }
 
     EVP_PKEY *pubkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
-    if (!pubkey)
-    {
-        fprintf(stderr, "Error: Failed to read public key from PEM.\n");
+    if (!pubkey) {
+        // Try as raw RSA public key
+        BIO_free(bio);
+        bio = BIO_new_mem_buf((void *)pem_str, -1);
+        RSA *rsa = PEM_read_bio_RSAPublicKey(bio, NULL, NULL, NULL);
+        if (rsa) {
+            pubkey = EVP_PKEY_new();
+            if (!pubkey || EVP_PKEY_assign_RSA(pubkey, rsa) != 1) {
+                RSA_free(rsa);
+                EVP_PKEY_free(pubkey);
+                pubkey = NULL;
+                fprintf(stderr, "Error: Failed to assign RSA to EVP_PKEY.\n");
+            }
+        } else {
+            fprintf(stderr, "Error: Failed to read key in either PEM format.\n");
+        }
     }
 
     BIO_free(bio);
     return pubkey;
 }
+
 
 // Load an EVP_PKEY from a PEM file (public or private)
 EVP_PKEY *load_key_from_file(const char *filepath, int is_private)
@@ -597,14 +609,16 @@ EVP_PKEY *load_key_from_file(const char *filepath, int is_private)
 
 EVP_PKEY *load_decrypted_key(const char *packed, EVP_PKEY *rsa_privkey)
 {
-    if (!packed || !rsa_privkey) {
+    if (!packed || !rsa_privkey)
+    {
         fprintf(stderr, "[ERROR] Missing packed key or TPM private key\n");
         return NULL;
     }
 
     char *enc_key_hex = NULL, *ciphertext_hex = NULL;
     hybrid_unpack(packed, &enc_key_hex, &ciphertext_hex);
-    if (!enc_key_hex || !ciphertext_hex) {
+    if (!enc_key_hex || !ciphertext_hex)
+    {
         fprintf(stderr, "[ERROR] Failed to unpack hybrid key format\n");
         free(enc_key_hex);
         free(ciphertext_hex);
@@ -615,21 +629,24 @@ EVP_PKEY *load_decrypted_key(const char *packed, EVP_PKEY *rsa_privkey)
     free(enc_key_hex);
     free(ciphertext_hex);
 
-    if (!dec.plaintext) {
+    if (!dec.plaintext)
+    {
         fprintf(stderr, "[ERROR] Hybrid decryption failed\n");
         ERR_print_errors_fp(stderr); // Dump OpenSSL errors
         return NULL;
     }
 
     BIO *bio = BIO_new_mem_buf(dec.plaintext, (int)dec.length);
-    if (!bio) {
+    if (!bio)
+    {
         fprintf(stderr, "[ERROR] Failed to create BIO for decrypted key\n");
         free(dec.plaintext);
         return NULL;
     }
 
     EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
-    if (!pkey) {
+    if (!pkey)
+    {
         fprintf(stderr, "[ERROR] PEM_read_bio_PrivateKey failed\n");
         ERR_print_errors_fp(stderr); // Again, useful for diagnosing PEM format problems
     }

@@ -93,8 +93,7 @@
 
 extern int Curr_num_f;
 extern int Curr_num_k;
-
-
+extern int Curr_req_shares;
 
 update_history up_hist[MAX_EMU_RTU + NUM_HMI + 1];
 tc_queue tcq_pending;
@@ -224,7 +223,8 @@ void *ITRC_Client(void *data)
    
     struct config *cfg = itrcd->cfg;
 
-    OPENSSL_RSA_Read_Keys(My_ID, cfg, "../prime/bin");
+    
+    OPENSSL_RSA_Read_Keys(My_ID, RSA_CLIENT, cfg, "../prime/bin");
     TC_Read_Public_Key_From_Config(cfg);
 
 
@@ -325,16 +325,18 @@ void *ITRC_Client(void *data)
             /* Message from IPC Client */
             if (FD_ISSET(ns.ipc_s, &tmask)) {
                 nBytes = IPC_Recv(ns.ipc_s, buff, MAX_LEN);
+                printf("ITRC_Client: Received message from IPC. Type: %d, Size: %d bytes\n", 
+                    ((signed_message*)buff)->type, nBytes);
                 signed_message *test_config=(signed_message*)buff;
                 if(test_config->type == PRIME_OOB_CONFIG_MSG){
-			//printf("ITRC_Client: Received PRIME_OOB_CONFIG_MSG\n");
-			config_message *c_mess=(config_message *)(test_config+1);
-			//Reload RSA and TC Pub Keys
-                        OPENSSL_RSA_Reload_Prime_Keys(Prime_Client_ID, RSA_CLIENT, "/tmp/test_keys/prime",c_mess->N);
-			//TC_cleanup();
-			TC_Read_Public_Key("/tmp/test_keys/sm");			
-			//TC_Reload_Public_Key("/tmp/test_keys/sm");			
-    			memset(&applied, 0, sizeof(ordinal));
+                    //printf("ITRC_Client: Received PRIME_OOB_CONFIG_MSG\n");
+                    config_message *c_mess=(config_message *)(test_config+1);
+                    //Reload RSA and TC Pub Keys
+                    OPENSSL_RSA_Reload_Prime_Keys(Prime_Client_ID, RSA_CLIENT, "/tmp/test_keys/prime",c_mess->N);
+                    //TC_cleanup();
+                    TC_Read_Public_Key("/tmp/test_keys/sm");			
+                    //TC_Reload_Public_Key("/tmp/test_keys/sm");			
+                        memset(&applied, 0, sizeof(ordinal));
 			/*
 			spines_close(ns.sp_ext_s);
                         FD_CLR(ns.sp_ext_s, &mask);
@@ -372,6 +374,7 @@ void *ITRC_Client(void *data)
                 ps = (seq_pair *)&buff[sizeof(signed_message)];
                 mess = PKT_Construct_Signed_Message(sizeof(signed_update_message) 
                             - sizeof(signed_message));
+                            
                 mess->machine_id = Prime_Client_ID;
                 mess->len = sizeof(signed_update_message) - sizeof(signed_message);
                 mess->type = UPDATE;
@@ -382,19 +385,28 @@ void *ITRC_Client(void *data)
                 up->seq_num = ps->seq_num;
                 //up->seq = *ps;
                 memcpy((unsigned char*)(up + 1), buff, nBytes);
+                printf("ITRC_Client: Constructing signed UPDATE message. Seq num: %u, Incarnation: %u\n", 
+                    up->seq_num, mess->incarnation);
+             
+                // printf("Message type: %u\n", mess->type);
                 //printf("Sending Update[%u]: [%u, %u]\n", mess->global_configuration_number,mess->incarnation, up->seq_num); 
 
+                // printf("Message len: %u, Signature size: %u\n", mess->len, SIGNATURE_SIZE);
+                
                 /* SIGN Message */
                 OPENSSL_RSA_Sign( ((byte*)mess) + SIGNATURE_SIZE,
                         sizeof(signed_message) + mess->len - SIGNATURE_SIZE,
                         (byte*)mess );
+
+                // printf("Message type: %u\n", mess->type);
 
                 rep = MIN(Curr_num_f + Curr_num_k + 1, 2 * (Curr_num_f + 2)); 
                 for (i = 1; i <= rep; i++) {
                     dest.sin_family = AF_INET;
                     dest.sin_port = htons(SM_EXT_BASE_PORT + Curr_CC_Replicas[i-1]);
                     dest.sin_addr.s_addr = inet_addr(Curr_Ext_Site_Addrs[Curr_CC_Sites[i-1]]);
-                    //printf("dest port=%d, dest addr=%s\n",SM_EXT_BASE_PORT + Curr_CC_Replicas[i-1],Curr_Ext_Site_Addrs[Curr_CC_Sites[i-1]]);
+                    // printf("Sending to replica %u, Message type: %u\n", i , mess->type);
+                    printf("dest port=%d, dest addr=%s\n",SM_EXT_BASE_PORT + Curr_CC_Replicas[i-1],Curr_Ext_Site_Addrs[Curr_CC_Sites[i-1]]);
                     //dest.sin_port = htons(SM_EXT_BASE_PORT + CC_Replicas[i-1]);
                     //dest.sin_addr.s_addr = inet_addr(Ext_Site_Addrs[CC_Sites[i-1]]);
                     ret = spines_sendto(ns.sp_ext_s, mess, sizeof(signed_update_message),
@@ -555,6 +567,7 @@ void *ITRC_Prime_Inject(void *data)
             /* Incoming NET message External spines network */
             if (Type == CC_TYPE && ns.sp_ext_s >= 0 && FD_ISSET(ns.sp_ext_s, &tmask)) {
                 nBytes = spines_recvfrom(ns.sp_ext_s, buff, MAX_LEN, 0, NULL, 0);
+                printf("Received from external spines.\n");
                 if (nBytes <= 0) {
                     printf("Disconnected from Spines?\n");
                     FD_CLR(ns.sp_ext_s, &mask);
@@ -593,6 +606,7 @@ void *ITRC_Prime_Inject(void *data)
                     continue;
                 }
 
+                // THIS ONE
                     //printf("Prime_Inject: valid message type (%d) from client\n", mess->type);
                 ret = OPENSSL_RSA_Verify((unsigned char*)mess + SIGNATURE_SIZE,
                             sizeof(signed_message) + mess->len - SIGNATURE_SIZE,
@@ -613,6 +627,7 @@ void *ITRC_Prime_Inject(void *data)
                 //ret = NET_Write(prime_sock, buff, nBytes);
 
                 /* would get blocked here if Prime stops reading */
+                printf("Sending to prime via ipc: %s\n", prime_path);
                 ret = IPC_Send(prime_sock, buff, nBytes, prime_path);
                 if(ret <= 0) {
                     perror("ITRC_Prime_Inject: Prime Writing error");
@@ -876,7 +891,7 @@ void *ITRC_Master(void *data)
     // TC_Read_Partial_Key(My_ID, 1, itrcd->sm_keys_dir);
 
     struct config *cfg = itrcd->cfg;
-    OPENSSL_RSA_Read_Keys(My_ID, cfg, "../prime/bin");
+    OPENSSL_RSA_Read_Keys(My_ID, RSA_SERVER, cfg, "../prime/bin");
     TC_Read_Public_Key_From_Config(cfg);
     TC_Read_Partial_Key_From_Config(My_ID, cfg, "../prime/bin");
 
@@ -984,7 +999,7 @@ void *ITRC_Master(void *data)
                 //MS2022 - Comment this print in actual runs
                 struct timeval prime_t;
                 gettimeofday(&prime_t,NULL);
-                //printf("Received message of type %d from prime_sock at %lu, %lu\n",mess->type,prime_t.tv_sec,prime_t.tv_usec);
+                printf("Received message of type %d from prime_sock at %lu, %lu\n",mess->type,prime_t.tv_sec,prime_t.tv_usec);
                 //printf("Prime [%d]: %d of %d\n", res->ord_num, res->event_idx, res->event_tot);
 
                 /* Check for valid message type */
@@ -1221,7 +1236,7 @@ void *ITRC_Master(void *data)
                     /* Send the state transfer message to the target replica that needs it */
                     dest.sin_family = AF_INET;
                     dest.sin_port = htons(SM_INT_BASE_PORT + st_mess->target);
-                    dest.sin_addr.s_addr = inet_addr(Curr_Int_Site_Addrs[All_Sites[st_mess->target-1]]);
+                    dest.sin_addr.s_addr = inet_addr(Curr_Int_Site_Addrs[Curr_All_Sites[st_mess->target-1]]);
                     //dest.sin_addr.s_addr = inet_addr(Int_Site_Addrs[All_Sites[st_mess->target-1]]);
                     ret = spines_sendto(ns.sp_int_s, scada_mess, sizeof(signed_message) + scada_mess->len,
                                 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
@@ -1266,12 +1281,12 @@ void *ITRC_Master(void *data)
                     continue;
 
                 /* Both CC and DC replicas send their shares to the CC replicas */
-                for (i = 1; i <= NUM_CC_REPLICA; i++) {
-                    if (CC_Replicas[i-1] == My_ID)
+                for (i = 1; i <= Curr_num_CC_Replica; i++) {
+                    if (Curr_CC_Replicas[i-1] == My_ID)
                         continue;
                     dest.sin_family = AF_INET;
                     dest.sin_port = htons(SM_INT_BASE_PORT + Curr_CC_Replicas[i-1]);
-                    dest.sin_addr.s_addr = inet_addr(Curr_Int_Site_Addrs[CC_Sites[i-1]]);
+                    dest.sin_addr.s_addr = inet_addr(Curr_Int_Site_Addrs[Curr_CC_Sites[i-1]]);
                     //dest.sin_port = htons(SM_INT_BASE_PORT + CC_Replicas[i-1]);
                     //dest.sin_addr.s_addr = inet_addr(Int_Site_Addrs[CC_Sites[i-1]]);
                     ret = spines_sendto(ns.sp_int_s, mess, sizeof(signed_message) + sizeof(tc_share_msg),
@@ -1321,7 +1336,7 @@ void *ITRC_Master(void *data)
 
                 if (Type == CC_TYPE && mess->type == TC_SHARE) {
                     tc_mess = (tc_share_msg *)(mess + 1);
-                    
+                    printf("TC Share recevied from %u\n", mess->machine_id);
                     /* Try to insert the TC share from this replica */
                     ITRC_Insert_TC_ID(tc_mess, mess->machine_id, NORMAL_ORD);
                     while (ITRC_TC_Ready_Deliver(&tc_final)) {
@@ -1334,7 +1349,7 @@ void *ITRC_Master(void *data)
                             break;
                         }
                         free(tc_final);
-                        //printf("2. ITRC_Send_TC_Final  sent\n");
+                        printf("2. ITRC_Send_TC_Final  sent\n");
                     }
                 }
                 else if (mess->type == STATE_XFER) {
@@ -1652,6 +1667,7 @@ void ITRC_Process_Prime_Ordinal(ordinal o, signed_message *mess, net_sock *ns)
         nBytes = sizeof(signed_message) + scada_mess->len;
         memcpy(up_hist[*idx].buff, scada_mess, nBytes);
         up_hist[*idx].ord = o;
+        printf("Passing to SCADA_MASTER\n");
         IPC_Send(ns->ipc_s, (void *)scada_mess, nBytes, ns->ipc_remote);
     }
     else {
@@ -1780,7 +1796,7 @@ void ITRC_Insert_TC_ID(tc_share_msg *tcm, int32u sender, int32u flag)
 
     memcpy(&ptr->shares[sender], tcm, sizeof(tc_share_msg));
     //printf("sender=%d, count=%d, req shares=%d received_own=%d\n",sender,ptr->count,REQ_SHARES,ptr->recvd[My_ID]);
-    if (ptr->count >= REQ_SHARES && ptr->recvd[My_ID] == 1) {
+    if (ptr->count >= Curr_req_shares && ptr->recvd[My_ID] == 1) {
         /* TODO: actually compare and check digests, find culprit if the TC
          *      shares don't work out, report them, clear their share, wait
          *      for more correct ones... */
@@ -1983,7 +1999,7 @@ int ITRC_Insert_ST_ID(state_xfer_msg *st, int32u sender)
         ptr->count++;
         memcpy(&ptr->state[sender], st, sizeof(state_xfer_msg) + st->state_size);
 
-        if (ptr->collected == 0 && ptr->count >= REQ_SHARES) {
+        if (ptr->collected == 0 && ptr->count >= Curr_req_shares) {
             
             /* See if we now have F+1 (aka REQ_SHARES) number of matching
              *  state xfer messages in order to finish this off */
@@ -1999,7 +2015,7 @@ int ITRC_Insert_ST_ID(state_xfer_msg *st, int32u sender)
                 if (OPENSSL_RSA_Digests_Equal(digest, stored_digest))
                     match_count++;
             }
-            if (match_count >= REQ_SHARES) {
+            if (match_count >= Curr_req_shares) {
                 ptr->result = (state_xfer_msg *)(&ptr->state[sender]);
                     //malloc(sizeof(state_xfer_msg) + st->state_size);
                     //memcpy(ptr->result, st, sizeof(state_xfer_msg) + st->state_size);

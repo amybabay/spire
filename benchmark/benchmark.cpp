@@ -143,6 +143,9 @@ void Gen_Msg()
     mess->global_configuration_number = My_Global_Configuration_Number; 
     nBytes = sizeof(signed_message) + mess->len;
     seq.seq_num++;
+    printf("Sending benchmark msg to %s (seq: %u, client: %d)\n", 
+       itrc_main.ipc_remote, seq.seq_num, My_ID);
+
     ret = IPC_Send(ipc_sock, (void *)mess, nBytes, itrc_main.ipc_remote);
     if (ret < 0) printf("Gen_Msg: IPC_Send error!\n");
     free(mess);
@@ -150,6 +153,7 @@ void Gen_Msg()
 
 void Process_Msg()
 {
+    printf("Processing message.\n");
     char buf[MAX_LEN];
     int ret, index,ret2; 
     double latency;
@@ -255,7 +259,7 @@ static void init(int ac, char **av)
 
     My_Global_Configuration_Number=cfg->configuration_id;
     Init_SM_Replicas(cfg);
-
+    
     // Net Setup
     seq.seq_num = 1;
     gettimeofday(&now, NULL);
@@ -270,6 +274,7 @@ static void init(int ac, char **av)
         printf("Could not find IP for client_id %d in configuration\n", My_ID);
         exit(EXIT_FAILURE);
     }
+    printf("My IP: %s", ip);
 
     // Setup IPC for the RTU Proxy main thread
     memset(&itrc_main, 0, sizeof(itrc_data));
@@ -295,12 +300,12 @@ static void init(int ac, char **av)
 
     // Grab the Timeout frequency 
     memset(&Poll_Period, 0, sizeof(struct timeval));
-    sscanf(av[3], "%d", (int *)&poll_freq);
+    sscanf(av[2], "%d", (int *)&poll_freq);
     Poll_Period.tv_sec  = poll_freq / 1000000;
     Poll_Period.tv_usec = poll_freq % 1000000;
 
     // Grab the Number of Polls
-    sscanf(av[4], "%d", &Num_Polls);
+    sscanf(av[3], "%d", &Num_Polls);
 
     // Setup Signal Handlers
     signal(SIGINT,  clean_exit);

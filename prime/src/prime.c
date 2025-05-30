@@ -81,7 +81,7 @@ int main(int argc, char **argv)
   Alarm_set_types(NONE);
   // Alarm_set_types(STATUS);
   // Alarm_set_types(PRINT);
-  // Alarm_set_types(DEBUG);
+  // Alarm_set_types(DEBUG | STATUS | PRINT);
   Alarm_enable_timestamp_high_res(NULL);
 
   Alarm(PRINT, "/===========================================================================\\\n");
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 
   // Read keys from config
   OPENSSL_RSA_Init();
-  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, cfg);
+  OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, RSA_SERVER, cfg, "./");
   TC_Read_Public_Key_From_Config(cfg);
   TC_Read_Partial_Key_From_Config(VAR.My_Server_ID, cfg);
 
@@ -196,7 +196,7 @@ void Usage(int argc, char **argv)
   VAR.My_Server_ID = 1;
   
   // MS2022: set initial global incarnation number to 0
-  DATA.NM.global_configuration_number = 0;
+  
   DATA.NM.PartOfConfig = 1;
 
   DATA.ORD.delay_attack = 0;
@@ -296,6 +296,7 @@ void Usage(int argc, char **argv)
     exit(0);
   }
   VAR.My_Server_ID = pending_server_id;
+  DATA.NM.global_configuration_number = cfg->configuration_id;
 }
 
 void Print_Usage()

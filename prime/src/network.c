@@ -795,6 +795,7 @@ void Net_Srv_Recv(channel sk, int source, void *dummy_p)
   }
 #if USE_IPC_CLIENT
   else if (source == IPC_SOURCE) { 
+    
     ret = IPC_Recv(sk, srv_recv_scat.elements[0].buf,
                 //sizeof(signed_update_message));
                 PRIME_MAX_PACKET_SIZE);

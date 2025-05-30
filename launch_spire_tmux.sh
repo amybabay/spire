@@ -1,38 +1,27 @@
 #!/bin/bash
 
-# Start Docker containers
-echo "Starting containers..."
-docker-compose up -d
-
-# Container names (adjust if needed)
+session="config_agent_$(date +%Y%m%d_%H%M%S)"
 containers=(spire1 spire2 spire3 spire4 spire5 spire6)
+hosts=(goldenrod1 goldenrod2 goldenrod3 goldenrod4 goldenrod11 goldenrod10)
 
-# Create new tmux session
-session="spire"
-tmux new-session -d -s $session
+# Start the first container with config_agent
+tmux new-session -d -s "$session" -n "config_agent" \
+    "docker exec -it ${containers[0]} bash -c 'cd prime/bin && ./config_agent -h ${hosts[0]}; exec bash'"
 
-# First container in the first pane
-tmux send-keys -t $session "docker exec -it ${containers[0]} bash" C-m
-
-# Split the rest into panes
-for i in "${!containers[@]}"; do
-  if [[ $i -eq 0 ]]; then
-    continue
-  fi
-
-  # Alternate vertical and horizontal splits
-  if (( i % 2 == 1 )); then
-    tmux split-window -h -t $session
-  else
-    tmux split-window -v -t $session
-  fi
-
-  tmux select-pane -t $i
-  tmux send-keys "docker exec -it ${containers[$i]} bash" C-m
+# Start containers 2 to 6
+for i in {1..5}; do
+  tmux split-window -t "$session:0" -v
+  tmux select-layout -t "$session:0" tiled
+  tmux send-keys -t "$session:0.$i" \
+    "docker exec -it ${containers[$i]} bash -c 'cd prime/bin && ./config_agent -h ${hosts[$i]}; exec bash'" C-m
 done
 
-# Evenly distribute panes
-tmux select-layout tiled
+# Final pane: just bash on spire1
+tmux split-window -t "$session:0" -v
+tmux select-layout -t "$session:0" tiled
+tmux send-keys -t "$session:0.6" \
+  "docker exec -it spire1 bash" C-m
 
-# Attach to the session
-tmux attach-session -t $session
+# Attach to the tmux session
+tmux select-layout -t "$session:0" tiled
+tmux attach -t "$session"

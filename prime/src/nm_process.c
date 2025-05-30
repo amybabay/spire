@@ -190,7 +190,7 @@ void process_oob_config(signed_message *mess)
     {
         Alarm(EXIT, "Failed to parse config file.\n");
     }
-    OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, cfg);
+    OPENSSL_RSA_Read_Keys(VAR.My_Server_ID, RSA_SERVER, cfg, ".");
 
     TC_Read_Public_Key_From_Config(cfg);
     TC_Read_Partial_Key_From_Config(VAR.My_Server_ID, cfg);

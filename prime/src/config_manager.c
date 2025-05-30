@@ -218,7 +218,7 @@ void generate_keys_for_replica(struct replica *replica, struct host *host, unsig
     }
 
     // Generate instance key pair
-    EVP_PKEY *instance_key = generate_rsa_key(2048);
+    EVP_PKEY *instance_key = generate_rsa_key(1024);
     if (!instance_key)
     {
         fprintf(stderr, "Error: Failed to generate RSA key for replica %d\n", replica->instance_id);
@@ -306,7 +306,7 @@ void generate_keys_for_client(struct client *client, struct host *host)
         return;
     }
 
-    EVP_PKEY *client_key = generate_rsa_key(2048);
+    EVP_PKEY *client_key = generate_rsa_key(1024);
     if (!client_key)
     {
         fprintf(stderr, "Error: Failed to generate RSA key for client %u\n", client->client_id);

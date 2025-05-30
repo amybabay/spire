@@ -56,6 +56,7 @@
 #include <openssl/evp.h>
 #include <stdio.h>
 #include <string.h>
+#include "scada_packets.h"
 
 /* Defined Types */
 // "ripemd160"
@@ -309,184 +310,374 @@ void OPENSSL_RSA_Generate_Keys_with_args(int count, const char *keys_dir)
 
 // /* Read all of the keys for servers or clients. All of the public keys
 //  * should be read and the private key for this server should be read. */
-//  void OPENSSL_RSA_Read_Keys(int32u my_number, int32u type, const char *keys_dir)
+// void OPENSSL_RSA_Read_Keys(int32u my_number, int32u type, const char *keys_dir)
 // {
 
-//   int32u s;
-//   int32u rt;
+// 	int32u s;
+// 	int32u rt;
 
-//   /* Read all public keys for servers. */
-//   for(s = 1; s <= NUMBER_OF_SERVERS; s++) {
-//     public_rsa_by_server[s] = RSA_new();
-//     Read_RSA(RSA_TYPE_PUBLIC, s, public_rsa_by_server[s], keys_dir);
-//   }
+// 	/* Read all public keys for servers. */
+// 	for (s = 1; s <= NUMBER_OF_SERVERS; s++)
+// 	{
+// 		public_rsa_by_server[s] = RSA_new();
+// 		Read_RSA(RSA_TYPE_PUBLIC, s, public_rsa_by_server[s], keys_dir);
+// 	}
 
-//   /* Read all public keys for clients. */
-//   for ( s = 1; s <= NUMBER_OF_CLIENTS; s++ ) {
-//     public_rsa_by_client[s] = RSA_new();
-//     Read_RSA( RSA_TYPE_CLIENT_PUBLIC, s, public_rsa_by_client[s], keys_dir);
-//   }
-//   /*Read public key of configuration manager*/
-//     public_config_mngr_rsa = RSA_new();
-//     Read_RSA( RSA_TYPE_CONFIG_MNGR_PUBLIC, 0, public_config_mngr_rsa, keys_dir);
+// 	/* Read all public keys for clients. */
+// 	for (s = 1; s <= NUMBER_OF_CLIENTS; s++)
+// 	{
+// 		public_rsa_by_client[s] = RSA_new();
+// 		Read_RSA(RSA_TYPE_CLIENT_PUBLIC, s, public_rsa_by_client[s], keys_dir);
+// 	}
+// 	/*Read public key of configuration manager*/
+// 	public_config_mngr_rsa = RSA_new();
+// 	Read_RSA(RSA_TYPE_CONFIG_MNGR_PUBLIC, 0, public_config_mngr_rsa, keys_dir);
 
-//   if ( type == RSA_SERVER ) {
-//     rt = RSA_TYPE_PRIVATE;
-//   } else if ( type == RSA_CLIENT ) {
-//     rt = RSA_TYPE_CLIENT_PRIVATE;
-//   } else if(type== RSA_CONFIG_MNGR){
-//       rt = RSA_TYPE_CONFIG_MNGR_PRIVATE;
-//       printf("RSA_TYPE_CONFIG_MNGR_PRIVATE\n");
-//   } else if(type== RSA_CONFIG_AGENT){
-//       return;
-//   } else {
-//     printf("OPENSSL_RSA_Read_Keys: Called with invalid type.\n");
-//     exit(0);
-//   }
+// 	if (type == RSA_SERVER)
+// 	{
+// 		rt = RSA_TYPE_PRIVATE;
+// 	}
+// 	else if (type == RSA_CLIENT)
+// 	{
+// 		rt = RSA_TYPE_CLIENT_PRIVATE;
+// 	}
+// 	else if (type == RSA_CONFIG_MNGR)
+// 	{
+// 		rt = RSA_TYPE_CONFIG_MNGR_PRIVATE;
+// 		printf("RSA_TYPE_CONFIG_MNGR_PRIVATE\n");
+// 	}
+// 	else if (type == RSA_CONFIG_AGENT)
+// 	{
+// 		return;
+// 	}
+// 	else
+// 	{
+// 		printf("OPENSSL_RSA_Read_Keys: Called with invalid type.\n");
+// 		exit(0);
+// 	}
 
-//   /* Read my private key. */
-//   private_rsa = RSA_new();
-//   Read_RSA( rt, my_number, private_rsa, keys_dir);
+// 	/* Read my private key. */
+// 	private_rsa = RSA_new();
+// 	Read_RSA(rt, my_number, private_rsa, keys_dir);
 // }
 
-void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg, const char *key_base_path)
+// void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const char *key_base_path) {
+// EVP_PKEY *tpm_privkey = NULL;
+
+// for every site
+// for every replica
+// read instance_public_key into public_rsa_by_server
+// if site has clients
+// for every client
+// read client instance_public_key into public_rsa_by_client
+// read config manager public key into public_config_mngr_rsa
+
+// if type == RSA_SERVER
+// find replica whose instance_id matches my_id
+// decrypt and load its encrypted_instance_private_key into private_key
+// else if type == RSA_CLIENT
+// if (client->type == BENCHMARK || client->type == PROXY)
+// find client entry who id matches my_id
+// else client->type ==  JHU PNNL EMS
+// find client whose client_id matches my_id
+// decrypt and load its encrypted_instance_private_key into private_key
+// }
+
+void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const char *key_base_path)
 {
 	EVP_PKEY *tpm_privkey = NULL;
 
-	// Load the config manager's public key into public_rsa_by_nm
-	char cm_key_path[512];
-
-	snprintf(cm_key_path, sizeof(cm_key_path), "%s/%s", key_base_path, "cm_keys/public_key.pem");
-
-	EVP_PKEY *cm_pubkey = load_key_from_file(cm_key_path, 0);
-	if (!cm_pubkey)
-	{
-		printf("Failed to load config manager public key\n");
-		exit(EXIT_FAILURE);
-	}
-	// public_rsa_by_nm = EVP_PKEY_get1_RSA(cm_pubkey);
-	EVP_PKEY_free(cm_pubkey);
-
+	fprintf(stderr, "=== BEGIN Loading Public Keys ===\n");
 	for (unsigned i = 0; i < cfg->sites_count; i++)
 	{
 		struct site *site = &cfg->sites[i];
+		fprintf(stderr, "Processing site: %s\n", site->name);
 
-		// Handle Replicas
 		for (unsigned r = 0; r < site->replicas_count; r++)
 		{
 			struct replica *rep = &site->replicas[r];
-
+			fprintf(stderr, "  Loading public key for replica %u\n", rep->instance_id);
 			if (rep->instance_public_key)
 			{
-				RSA *pub_rsa = load_public_key_from_pem(rep->instance_public_key);
-				if (!pub_rsa)
+				EVP_PKEY *pubkey = load_public_key_from_pem(rep->instance_public_key);
+				if (!pubkey)
 				{
-					printf("Failed to load public key for replica %u\n", rep->instance_id);
+					fprintf(stderr, "  ERROR: Failed to load public key for replica %u\n", rep->instance_id);
 					exit(EXIT_FAILURE);
 				}
-				public_rsa_by_server[rep->instance_id] = pub_rsa;
-				public_rsa_by_client[rep->instance_id] = RSAPublicKey_dup(pub_rsa);
-			}
-
-			// Load private key if this is our replica
-			if (rep->instance_id == my_instance_id)
-			{
-				struct host *host = find_host_for_replica(site, rep->host);
-
-				char full_path[512];
-
-				if (!host || !host->permanent_key_location)
-				{
-					printf("Could not find host for replica %u\n", rep->instance_id);
-					exit(EXIT_FAILURE);
-				}
-
-				snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
-				// printf("Full path: %s\n", full_path);
-
-				tpm_privkey = load_key_from_file(full_path, 1);
-				if (!tpm_privkey)
-				{
-					printf("Failed to load TPM key for replica %u from path %s\n", rep->instance_id, full_path);
-					exit(EXIT_FAILURE);
-				}
-
-				EVP_PKEY *decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
-				if (!decrypted_pkey)
-				{
-					printf("Failed to decrypt instance private key for replica %u\n", rep->instance_id);
-					exit(EXIT_FAILURE);
-				}
-
-				private_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
-				if (!private_rsa)
-				{
-					printf("EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
-					exit(EXIT_FAILURE);
-				}
-				EVP_PKEY_free(decrypted_pkey);
-
-				decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
-				if (!decrypted_pkey)
-				{
-					printf("Failed to decrypt instance private key for client portion of replica %u\n", rep->instance_id);
-					exit(EXIT_FAILURE);
-				}
-				// private_client_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
-				// if (!private_client_rsa) {
-				//     printf("[KEY CONVERSION] EVP_PKEY_get1_RSA failed for client portion of replica %u\n", rep->instance_id);
-				// }
-				EVP_PKEY_free(decrypted_pkey);
+				public_rsa_by_server[rep->instance_id] = EVP_PKEY_get1_RSA(pubkey);
+				EVP_PKEY_free(pubkey);
 			}
 		}
 
-		// Handle Clients
 		for (unsigned c = 0; c < site->clients_count; c++)
 		{
 			struct client *client = &site->clients[c];
-			int prime_client_id = client->client_id + MAX_NUM_SERVER_SLOTS;
-
+			int client_index = client->client_id + MAX_NUM_SERVER_SLOTS;
+			fprintf(stderr, "  Loading public key for client %u (type: %s)\n", client->client_id, client->type);
 			if (client->instance_public_key)
 			{
-				RSA *pub_rsa = load_public_key_from_pem(client->instance_public_key);
-				if (!pub_rsa)
+				EVP_PKEY *pubkey = load_public_key_from_pem(client->instance_public_key);
+				if (!pubkey)
 				{
-					printf("Failed to load public key for client %u\n", client->client_id);
+					fprintf(stderr, "  ERROR: Failed to load public key for client %u\n", client->client_id);
 					exit(EXIT_FAILURE);
 				}
-				public_rsa_by_client[prime_client_id] = pub_rsa;
+				public_rsa_by_client[client_index] = EVP_PKEY_get1_RSA(pubkey);
+				EVP_PKEY_free(pubkey);
 			}
+		}
+	}
 
-			// Load private key if this is our client
-			if (prime_client_id == my_instance_id)
+	fprintf(stderr, "=== Loading Config Manager Public Key ===\n");
+	char cm_key_path[512];
+	snprintf(cm_key_path, sizeof(cm_key_path), "%s/%s", key_base_path, "cm_keys/public_key.pem");
+	EVP_PKEY *cm_pubkey = load_key_from_file(cm_key_path, 0);
+	if (!cm_pubkey)
+	{
+		fprintf(stderr, "  ERROR: Failed to load config manager public key\n");
+		exit(EXIT_FAILURE);
+	}
+	public_config_mngr_rsa = EVP_PKEY_get1_RSA(cm_pubkey);
+	EVP_PKEY_free(cm_pubkey);
+
+	fprintf(stderr, "=== BEGIN Loading Private Key for This Host (my_id = %u, type = %u) ===\n", my_id, type);
+	if (type == RSA_SERVER)
+	{
+		for (unsigned i = 0; i < cfg->sites_count; i++)
+		{
+			struct site *site = &cfg->sites[i];
+			for (unsigned r = 0; r < site->replicas_count; r++)
 			{
-				char full_path[512];
-
-				struct host *host = find_host_for_replica(site, client->host);
-				if (!host || !host->permanent_key_location)
+				struct replica *rep = &site->replicas[r];
+				if (rep->instance_id == my_id)
 				{
-					printf("Could not find host for client %u\n", client->client_id);
-					exit(EXIT_FAILURE);
+					fprintf(stderr, "Found matching replica with ID %u\n", my_id);
+					struct host *host = find_host_for_replica(site, rep->host);
+					if (!host || !host->permanent_key_location)
+					{
+						fprintf(stderr, "  ERROR: Missing TPM key path for host %s\n", rep->host);
+						exit(EXIT_FAILURE);
+					}
+					fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
+
+					char full_path[512];
+					snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
+					tpm_privkey = load_key_from_file(full_path, 1);
+					if (!tpm_privkey)
+					{
+						fprintf(stderr, "  ERROR: Failed to load TPM private key from %s\n", full_path);
+						exit(EXIT_FAILURE);
+					}
+
+					fprintf(stderr, "  Decrypting private key for replica...\n");
+					EVP_PKEY *decrypted = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
+					if (!decrypted)
+					{
+						fprintf(stderr, "  ERROR: Failed to decrypt replica private key\n");
+						exit(EXIT_FAILURE);
+					}
+
+					private_rsa = EVP_PKEY_get1_RSA(decrypted);
+					EVP_PKEY_free(decrypted);
+					break;
+				}
+			}
+		}
+	}
+	else if (type == RSA_CLIENT)
+	{
+		for (unsigned i = 0; i < cfg->sites_count; i++)
+		{
+			struct site *site = &cfg->sites[i];
+			for (unsigned c = 0; c < site->clients_count; c++)
+			{
+				struct client *client = &site->clients[c];
+				int matched = 0;
+
+				if ((strcmp(client->type, "JHU") == 0 && my_id == 1) ||
+					(strcmp(client->type, "PNNL") == 0 && my_id == 2) ||
+					(strcmp(client->type, "EMS") == 0 && my_id == 3))
+				{
+					matched = 1;
+					fprintf(stderr, "Found HMI client (type: %s) with implied ID %u\n", client->type, my_id);
+				}
+				else if (client->client_id == my_id)
+				{
+					matched = 1;
+					fprintf(stderr, "Found benchmark/proxy client with ID %u\n", my_id);
 				}
 
-				snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
-
-				tpm_privkey = load_key_from_file(full_path, 1);
-				if (!tpm_privkey)
+				if (matched)
 				{
-					printf("Failed to load TPM key for client %u\n", client->client_id);
-					exit(EXIT_FAILURE);
-				}
+					struct host *host = find_host_for_replica(site, client->host);
+					if (!host || !host->permanent_key_location)
+					{
+						fprintf(stderr, "  ERROR: Missing TPM key path for client host %s\n", client->host);
+						exit(EXIT_FAILURE);
+					}
+					fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
 
-				// private_client_rsa = EVP_PKEY_get1_RSA(
-				//     load_decrypted_key(client->encrypted_instance_private_key, tpm_privkey));
+					char full_path[512];
+					snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
+					tpm_privkey = load_key_from_file(full_path, 1);
+					if (!tpm_privkey)
+					{
+						fprintf(stderr, "  ERROR: Failed to load TPM private key from %s\n", full_path);
+						exit(EXIT_FAILURE);
+					}
+
+					fprintf(stderr, "  Decrypting private key for client...\n");
+					EVP_PKEY *decrypted = load_decrypted_key(client->encrypted_instance_private_key, tpm_privkey);
+					if (!decrypted)
+					{
+						fprintf(stderr, "  ERROR: Failed to decrypt client private key\n");
+						exit(EXIT_FAILURE);
+					}
+
+					private_rsa = EVP_PKEY_get1_RSA(decrypted);
+					EVP_PKEY_free(decrypted);
+					break;
+				}
 			}
 		}
 	}
 
 	if (tpm_privkey)
+	{
+		fprintf(stderr, "Freeing TPM key\n");
 		EVP_PKEY_free(tpm_privkey);
+	}
+
+	fprintf(stderr, "=== Done loading keys ===\n");
 }
+
+// void OPENSSL_RSA_Read_Keys(int32u my_instance_id, int32u type, struct config *cfg, const char *key_base_path)
+// {
+// 	EVP_PKEY *tpm_privkey = NULL;
+
+// 	printf("Reading keys for type %u, id: %u \n", type, my_instance_id);
+// 	// Load the config manager's public key
+// 	char cm_key_path[512];
+// 	snprintf(cm_key_path, sizeof(cm_key_path), "%s/%s", key_base_path, "cm_keys/public_key.pem");
+
+// 	EVP_PKEY *cm_pubkey = load_key_from_file(cm_key_path, 0);
+// 	if (!cm_pubkey)
+// 	{
+// 		printf("Failed to load config manager public key\n");
+// 		exit(EXIT_FAILURE);
+// 	}
+// 	EVP_PKEY_free(cm_pubkey);
+
+// 	for (unsigned i = 0; i < cfg->sites_count; i++)
+// 	{
+// 		struct site *site = &cfg->sites[i];
+
+// 		// === Replicas ===
+// 		for (unsigned r = 0; r < site->replicas_count; r++)
+// 		{
+// 			struct replica *rep = &site->replicas[r];
+
+// 			if (rep->instance_public_key)
+// 			{
+// 				EVP_PKEY *pubkey = load_public_key_from_pem(rep->instance_public_key);
+// 				if (!pubkey)
+// 				{
+// 					printf("Failed to load public key for replica %u\n", rep->instance_id);
+// 					ERR_print_errors_fp(stderr);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				RSA *rsa = EVP_PKEY_get1_RSA(pubkey);
+// 				if (!rsa)
+// 				{
+// 					printf("EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
+// 					ERR_print_errors_fp(stderr);
+// 					EVP_PKEY_free(pubkey);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				printf("Loaded RSA pubkey for replica %u (host: %s)\n", rep->instance_id, rep->spines_external_daemon);
+// 				public_rsa_by_server[rep->instance_id] = rsa;
+// 				public_rsa_by_client[rep->instance_id] = rsa;
+// 				EVP_PKEY_free(pubkey);
+// 			}
+
+// 			// Load private key if we're a replica and this is us
+// 			if (type == 2 && rep->instance_id == my_instance_id)
+// 			{
+// 				struct host *host = find_host_for_replica(site, rep->host);
+// 				if (!host || !host->permanent_key_location)
+// 				{
+// 					printf("Could not find host for replica %u\n", rep->instance_id);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				char full_path[512];
+// 				snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
+
+// 				tpm_privkey = load_key_from_file(full_path, 1);
+// 				if (!tpm_privkey)
+// 				{
+// 					printf("Failed to load TPM key for replica %u from path %s\n", rep->instance_id, full_path);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				EVP_PKEY *decrypted_pkey = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
+// 				if (!decrypted_pkey)
+// 				{
+// 					printf("Failed to decrypt instance private key for replica %u\n", rep->instance_id);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				printf("Loaded private_rsa key for replica %u (host: %s)\n", my_instance_id, host->name);
+// 				private_rsa = EVP_PKEY_get1_RSA(decrypted_pkey);
+// 				if (!private_rsa)
+// 				{
+// 					printf("EVP_PKEY_get1_RSA failed for replica %u\n", rep->instance_id);
+// 					exit(EXIT_FAILURE);
+// 				}
+// 				EVP_PKEY_free(decrypted_pkey);
+// 			}
+// 		}
+
+// 		// === Clients ===
+// 		for (unsigned c = 0; c < site->clients_count; c++)
+// 		{
+// 			struct client *client = &site->clients[c];
+// 			int prime_client_id = client->client_id + MAX_NUM_SERVER_SLOTS;
+
+// 			if (client->instance_public_key)
+// 			{
+// 				EVP_PKEY *pubkey = load_public_key_from_pem(client->instance_public_key);
+// 				if (!pubkey)
+// 				{
+// 					printf("Failed to load public key for client %u\n", client->client_id);
+// 					ERR_print_errors_fp(stderr);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				RSA *rsa = EVP_PKEY_get1_RSA(pubkey);
+// 				if (!rsa)
+// 				{
+// 					printf("EVP_PKEY_get1_RSA failed for client %u\n", client->client_id);
+// 					ERR_print_errors_fp(stderr);
+// 					EVP_PKEY_free(pubkey);
+// 					exit(EXIT_FAILURE);
+// 				}
+
+// 				printf("Loaded RSA pubkey for client %u (id: %d)\n", client->client_id, prime_client_id);
+// 				public_rsa_by_client[prime_client_id] = rsa;
+// 				EVP_PKEY_free(pubkey);
+// 			}
+// 		}
+// 	}
+
+// 	if (tpm_privkey)
+// 	{
+// 		EVP_PKEY_free(tpm_privkey);
+// 	}
+// }
 
 /* Called during reconfiguration to reload prime server keys only*/
 void OPENSSL_RSA_Reload_Prime_Keys(int32u my_number, int32u type, const char *keys_dir, int32u curr_servers)
@@ -625,6 +816,7 @@ void OPENSSL_RSA_Make_Signature(const byte *digest_value, byte *signature)
 
 	// OPENSSL_RSA_Print_Digest(digest_value);
 	RSA_sign(NID_sha1, digest_value, DIGEST_SIZE, signature, &signature_size, private_rsa);
+	// printf("signature size: %u\n", signature_size);
 	// printf("RSA_Sign signature_sized=%u\n",signature_size);
 	// end = E_get_time();
 
@@ -653,6 +845,7 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 		{
 			return 0;
 		}
+		// printf("pub rsa by client %u\n", number);
 		rsa = public_rsa_by_client[number];
 	}
 	else if (type == RSA_SERVER)
@@ -661,12 +854,25 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 		{
 			return 0;
 		}
+		// printf("pub rsa by server %u\n", number);
 		rsa = public_rsa_by_server[number];
 	}
 	else if (type == RSA_CONFIG_MNGR)
 	{
+		// printf("cfg manager rsa\n");
 		rsa = public_config_mngr_rsa;
 	}
+
+	if (rsa == NULL)
+	{
+		// printf("RSA key is NULL (type=%u, number=%u)\n", type, number);
+		return 0;
+	}
+
+	// printf("rsa pointer: %p\n", (void *)rsa);
+
+	// printf("Verifying with RSA key size: %d bytes\n", RSA_size(rsa));
+	// printf("Digest size: %d, Signature size: %d\n", DIGEST_SIZE, SIGNATURE_SIZE);
 
 	// OPENSSL_RSA_Print_Digest(digest_value);
 	ret = RSA_verify(NID_sha1, digest_value, DIGEST_SIZE, signature, SIGNATURE_SIZE,
@@ -705,7 +911,9 @@ void OPENSSL_RSA_Sign(const unsigned char *message, size_t message_length,
 	memset(md_value, 0, sizeof(md_value));
 	OPENSSL_RSA_Make_Digest(message, message_length, md_value);
 	// OPENSSL_RSA_Print_Digest(md_value);
+	// printf("after make digest message type: %u\n ",((signed_message*) signature)->type);
 	OPENSSL_RSA_Make_Signature(md_value, signature);
+	// printf("after make signature message type: %u\n ",((signed_message*) signature)->type);
 #if 0    
     Alarm( PRINT," verify 1 %d\n",
 	   OPENSSL_RSA_Verify_Signature( md_value, signature, 1, 
@@ -731,8 +939,8 @@ int OPENSSL_RSA_Verify(const unsigned char *message, size_t message_length,
 #endif
 
 	OPENSSL_RSA_Make_Digest(message, message_length, md_value);
-	ret = OPENSSL_RSA_Verify_Signature(md_value, signature, number, type);
 
+	ret = OPENSSL_RSA_Verify_Signature(md_value, signature, number, type);
 	return ret;
 }
 

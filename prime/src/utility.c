@@ -820,7 +820,6 @@ void UTIL_Send_To_Server(signed_message *mess, int32u server_id)
 			return;
 
 		address = UTIL_Get_Server_Spines_Address(server_id);
-
 		Alarm(DEBUG, "%d SENDING with spines: To %d " IPF " port: %d \n",
 			  VAR.My_Server_ID, server_id, IP(address),
 			  PRIME_SPINES_SERVER_BASE_PORT + server_id);
@@ -1679,15 +1678,19 @@ void UTIL_Load_Addresses_From_Config(struct config *cfg)
 				Alarm(EXIT, "Host '%s' not found or missing IP for replica %u\n", daemon_name, rep->instance_id);
 			}
 
-			in_addr_t addr = inet_addr(found_host->ip);
-			if (addr == INADDR_NONE)
+			in_addr_t net_addr = inet_addr(found_host->ip);
+			if (net_addr == INADDR_NONE)
 			{
 				Alarm(EXIT, "Invalid IP address for host '%s': %s\n", found_host->name, found_host->ip);
 			}
 
-			// save the IP of the matching host in the correct server slot
-			NET.server_address_spines[rep->instance_id] = addr;
-			NET.server_address[rep->instance_id] = addr;
+			// Convert from network byte order to host byte order so later htonl() will work correctly
+			in_addr_t host_addr = ntohl(net_addr);
+
+			NET.server_address_spines[rep->instance_id] = host_addr;
+			NET.server_address[rep->instance_id] = host_addr;
+
+			replica_index++;
 		}
 	}
 
@@ -1698,7 +1701,7 @@ void UTIL_Load_Addresses_From_Config(struct config *cfg)
 	{
 		// assume unique
 		unique_spines = 1;
-		
+
 		// check if already in list of daemon addrs
 		for (i = 1; i <= NET.num_spines_daemons; i++)
 		{
@@ -1709,11 +1712,11 @@ void UTIL_Load_Addresses_From_Config(struct config *cfg)
 				break;
 			}
 		}
-		
+
 		// if new addr
 		if (unique_spines)
 		{
-			//increment the count and add it to list of unique spines addresses
+			// increment the count and add it to list of unique spines addresses
 			NET.num_spines_daemons++;
 			NET.spines_daemon_address[NET.num_spines_daemons] = NET.server_address_spines[server];
 		}

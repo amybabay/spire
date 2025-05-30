@@ -440,12 +440,13 @@ typedef struct tc_node_d {
     ordinal ord;
     int32u done;
     int32u count;
-    char recvd[MAX_SHARES + 1];
-    tc_share_msg shares[MAX_SHARES + 1];
+    char recvd[MAX_NUM_SERVER_SLOTS];
+    tc_share_msg shares[MAX_NUM_SERVER_SLOTS];
     struct tc_node_d *next;
     signed_message *tcf;
     char skip;
 } tc_node;
+
 
 typedef struct tc_queue_d {
     tc_node head;
@@ -458,8 +459,8 @@ typedef struct st_node_d {
     int32u collected;
     int32u count;
     int32u signaled;
-    char recvd[MAX_SHARES + 1];
-    char state[MAX_SHARES + 1][MAX_LEN];
+    char recvd[MAX_NUM_SERVER_SLOTS];
+    char state[MAX_NUM_SERVER_SLOTS][MAX_LEN];
     state_xfer_msg *result;
     struct st_node_d *next;
 } st_node;

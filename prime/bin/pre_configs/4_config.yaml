@@ -50,18 +50,18 @@ sites:
     hosts:
       - name: goldenrod10
         permanent_key_location: "tpm_keys/goldenrod10_tpm_private.pem"
-        ip: 192.168.101.107
+        ip: 192.168.101.108
         runs_spines_external: 1
 
-  - name: hmi_site
+  - name: benchmark_site
     type: CLIENT
     hosts:
       - name: goldenrod11
         permanent_key_location: "tpm_keys/goldenrod11_tpm_private.pem"
-        ip: 192.168.101.108
+        ip: 192.168.101.107
         runs_spines_external: 1
     clients:
-      - client_id: 2 
+      - client_id: 2
         host: goldenrod11
         spines_external_daemon: goldenrod11
         type: benchmark #(hmis (JHU, PNNL, or EMS), proxy, benchmark)  

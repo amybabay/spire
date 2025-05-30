@@ -964,6 +964,7 @@ void remove_spines_tmp_files()
 
 void start_components_from_config(const struct config *cfg, const struct host *me)
 {
+    int log_to_file = 0;
     remove_spines_tmp_files();
 
     char cmd[1024];
@@ -983,39 +984,39 @@ void start_components_from_config(const struct config *cfg, const struct host *m
 
             if (rep_host == me)
             {
-                // Start internal Spines daemon if this host is configured for it
                 if (me->runs_spines_internal)
                 {
                     snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p %d -c spines_int.conf -I %s > ../../prime/bin/logs/spines_int.log &",
-                             SPINES_PORT, me->ip);
+                             "cd ../../spines/daemon && ./spines -p %d -c spines_int.conf -I %s %s &",
+                             SPINES_PORT, me->ip,
+                              "> ../../prime/bin/logs/spines_int.log" );
                     Alarm(PRINT, "\nStarting internal Spines: %s", cmd);
                     system(cmd);
                 }
 
-                // Start external Spines daemon if this host is configured for it
                 if (me->runs_spines_external)
                 {
                     snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s > ../../prime/bin/logs/spines_ext.log &",
-                             SPINES_EXT_PORT, me->ip);
+                             "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s %s &",
+                             SPINES_EXT_PORT, me->ip,
+                             "> ../../prime/bin/logs/spines_ext.log" );
                     Alarm(PRINT, "\nStarting external Spines: %s", cmd);
                     system(cmd);
                 }
 
                 Alarm(PRINT, "\nStarting replica instance %u from site %u", r->instance_id, i);
-                // Pass config to scada_master and prime
-                snprintf(cmd, sizeof(cmd),
-                         "cd ../../scada_master && ./scada_master %u %u > ../prime/bin/logs/sm.log &",
-                         r->instance_id, r->instance_id,
-                         SPINES_EXT_PORT);
 
+                snprintf(cmd, sizeof(cmd),
+                         "cd ../../scada_master && ./scada_master %u %u %s &",
+                         r->instance_id, r->instance_id,
+                         log_to_file ? "> ../prime/bin/logs/sm.log" : "");
                 Alarm(PRINT, "\nStarting scada_master: %s", cmd);
                 system(cmd);
 
                 snprintf(cmd, sizeof(cmd),
-                         "./prime -i %u -g %u > logs/prime.log &",
-                         r->instance_id, r->instance_id);
+                         "./prime -i %u -g %u %s &",
+                         r->instance_id, r->instance_id,
+                         log_to_file ? "> logs/prime.log" : "");
                 Alarm(PRINT, "\nStarting prime: %s", cmd);
                 system(cmd);
             }
@@ -1032,52 +1033,40 @@ void start_components_from_config(const struct config *cfg, const struct host *m
 
                 if (client_host == me && c->type)
                 {
-                    // Client programs have been refactored to default to received_configs/latest.yaml
-                    // so no config path argument is necessary but can be passed for each with -c <path>
                     snprintf(cmd, sizeof(cmd),
-                             "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s > ../../prime/bin/logs/spines_ext.log &",
-                             SPINES_EXT_PORT, me->ip);
+                             "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s %s &",
+                             SPINES_EXT_PORT, me->ip,
+                             "> ../../prime/bin/logs/spines_ext.log");
                     Alarm(PRINT, "\nStarting external Spines (client host): %s", cmd);
                     system(cmd);
 
                     if (strcmp(c->type, "JHU") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./jhu_hmi/jhu_hmi > ../prime/bin/logs/jhu_hmi.log &");
-                        Alarm(PRINT, "\nStarting JHU HMI: %s", cmd);
-                    }
+                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./jhu_hmi/jhu_hmi %s &",
+                                 log_to_file ? "> ../prime/bin/logs/jhu_hmi.log" : "");
                     else if (strcmp(c->type, "PNNL") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./pnnl_hmi/pnnl_hmi > ../prime/bin/logs/pnnl_hmi.log &");
-                        Alarm(PRINT, "\nStarting PNNL HMI: %s", cmd);
-                    }
+                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./pnnl_hmi/pnnl_hmi %s &",
+                                 log_to_file ? "> ../prime/bin/logs/pnnl_hmi.log" : "");
                     else if (strcmp(c->type, "EMS") == 0)
-                    {
-                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./ems_hmi/ems_hmi > ../prime/bin/logs/ems_hmi.log &");
-                        Alarm(PRINT, "\nStarting EMS HMI: %s", cmd);
-                    }
+                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./ems_hmi/ems_hmi %s &",
+                                 log_to_file ? "> ../prime/bin/logs/ems_hmi.log" : "");
                     else if (strcmp(c->type, "proxy") == 0)
-                    {
-                        // snprintf(cmd, sizeof(cmd), "cd proxy/ && ./proxy <ID> <Num_RTU_Emulated> &");
-                        snprintf(cmd, sizeof(cmd), "cd ../../proxy/ && ./proxy %u 1 > ../prime/bin/logs/proxy.log &", c->client_id);
-
-                        Alarm(PRINT, "\nStarting Proxy Client: %s", cmd);
-                    }
+                        snprintf(cmd, sizeof(cmd), "cd ../../proxy/ && ./proxy %u 1 %s &",
+                                 c->client_id, log_to_file ? "> ../prime/bin/logs/proxy.log" : "");
                     else if (strcmp(c->type, "benchmark") == 0)
-                    {
-                        // snprintf(cmd, sizeof(cmd), "cd benchmark/ && ./benchmark <ID> <Poll_Frequency(usec)> <Num_Polls> &");
-                        snprintf(cmd, sizeof(cmd), "cd ../../benchmark/ && ./benchmark %u 1000000 500 > ../prime/bin/logs/benchmark.log &", c->client_id);
-
-                        Alarm(PRINT, "\nStarting Benchmark Client: %s", cmd);
-                    }
+                        snprintf(cmd, sizeof(cmd), "cd ../../benchmark/ && ./benchmark %u 10000 10 %s &",
+                                 c->client_id, log_to_file ? "> ../prime/bin/logs/benchmark.log" : "");
                     else
                     {
                         Alarm(PRINT, "\nUnknown client type '%s' for client %u — skipping", c->type, c->client_id);
                         continue;
                     }
+
+                    Alarm(PRINT, "\nStarting Client: %s", cmd);
                     system(cmd);
                 }
             }
         }
     }
+
     Alarm(PRINT, "\n=== Component Startup Complete ===\n");
 }
