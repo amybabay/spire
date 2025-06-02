@@ -6,15 +6,16 @@ export CPATH="$PREFIX/include:$CPATH"
 export LIBRARY_PATH="$PREFIX/lib:$LIBRARY_PATH"
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 
-# Install libyaml
+# Download libyaml release tarball
 cd /tmp
-git clone --depth=1 https://github.com/yaml/libyaml.git
-cd libyaml
-./bootstrap || ./configure --prefix="$PREFIX"
+curl -LO https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+tar -xf yaml-0.2.5.tar.gz
+cd yaml-0.2.5
+./configure --prefix="$PREFIX"
 make -j$(nproc)
 make install
 
-# Install libcyaml
+# Build and install libcyaml
 cd /tmp
 git clone --depth=1 https://github.com/tlsa/libcyaml.git
 cd libcyaml
@@ -22,3 +23,4 @@ make -j$(nproc)
 make install PREFIX="$PREFIX"
 
 echo "libyaml and libcyaml installed to $PREFIX"
+
