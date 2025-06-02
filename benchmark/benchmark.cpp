@@ -143,8 +143,8 @@ void Gen_Msg()
     mess->global_configuration_number = My_Global_Configuration_Number; 
     nBytes = sizeof(signed_message) + mess->len;
     seq.seq_num++;
-    printf("Sending benchmark msg to %s (seq: %u, client: %d)\n", 
-       itrc_main.ipc_remote, seq.seq_num, My_ID);
+    // printf("Sending benchmark msg to %s (seq: %u, client: %d)\n", 
+    //    itrc_main.ipc_remote, seq.seq_num, My_ID);
 
     ret = IPC_Send(ipc_sock, (void *)mess, nBytes, itrc_main.ipc_remote);
     if (ret < 0) printf("Gen_Msg: IPC_Send error!\n");

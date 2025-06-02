@@ -65,6 +65,8 @@ static char Spines_Addr[32] = DEFAULT_SPINES_ADDR;
 static int Spines_Port = DEFAULT_SPINES_PORT;
 static char Host_Name[128] = {0}; // Empty string by default
 
+int log_to_file = 0;
+
 static void Init_Network(void);
 static void Handle_Conf_Message(int s, int source, void *dummy);
 static void Usage(int argc, char **argv);
@@ -478,6 +480,17 @@ static void Usage(int argc, char **argv)
             argc--;
             argv++;
         }
+        else if ((argc > 1) && (!strncmp(*argv, "-l", 2)))
+        {
+            ret = sscanf(argv[1], "%d", &log_to_file);
+            if (ret != 1 || (log_to_file != 0 && log_to_file != 1))
+            {
+                Alarm(PRINT, "Invalid log setting: %s (must be 0 or 1)\n", argv[1]);
+                Print_Usage();
+            }
+            argc--;
+            argv++;
+        }
         else
         {
             Print_Usage();
@@ -491,14 +504,17 @@ static void Usage(int argc, char **argv)
     }
 }
 
+
 static void Print_Usage(void)
 {
     Alarm(EXIT, "Usage: ./config_agent -h host_name\n"
                 "    [-a spines_addr] : IP address of Spines daemon to connect to. Default: %s\n"
                 "    [-p spines_port] : Port for Spines configuration network. Default: %d\n"
+                "    [-l log_mode]    : Log destination (0 = console, 1 = file). Default: 0\n"
                 "    -h host_name     : REQUIRED. Host name to match in config.\n",
           DEFAULT_SPINES_ADDR, DEFAULT_SPINES_PORT);
 }
+
 
 /**
  * Checks if an IP address already exists in a list of DaemonEntry structs.
@@ -964,7 +980,6 @@ void remove_spines_tmp_files()
 
 void start_components_from_config(const struct config *cfg, const struct host *me)
 {
-    int log_to_file = 0;
     remove_spines_tmp_files();
 
     char cmd[1024];

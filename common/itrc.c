@@ -325,8 +325,8 @@ void *ITRC_Client(void *data)
             /* Message from IPC Client */
             if (FD_ISSET(ns.ipc_s, &tmask)) {
                 nBytes = IPC_Recv(ns.ipc_s, buff, MAX_LEN);
-                printf("ITRC_Client: Received message from IPC. Type: %d, Size: %d bytes\n", 
-                    ((signed_message*)buff)->type, nBytes);
+                // printf("ITRC_Client: Received message from IPC. Type: %d, Size: %d bytes\n", 
+                    // ((signed_message*)buff)->type, nBytes);
                 signed_message *test_config=(signed_message*)buff;
                 if(test_config->type == PRIME_OOB_CONFIG_MSG){
                     //printf("ITRC_Client: Received PRIME_OOB_CONFIG_MSG\n");
@@ -385,8 +385,8 @@ void *ITRC_Client(void *data)
                 up->seq_num = ps->seq_num;
                 //up->seq = *ps;
                 memcpy((unsigned char*)(up + 1), buff, nBytes);
-                printf("ITRC_Client: Constructing signed UPDATE message. Seq num: %u, Incarnation: %u\n", 
-                    up->seq_num, mess->incarnation);
+                // printf("ITRC_Client: Constructing signed UPDATE message. Seq num: %u, Incarnation: %u\n", 
+                    // up->seq_num, mess->incarnation);
              
                 // printf("Message type: %u\n", mess->type);
                 //printf("Sending Update[%u]: [%u, %u]\n", mess->global_configuration_number,mess->incarnation, up->seq_num); 
@@ -406,7 +406,7 @@ void *ITRC_Client(void *data)
                     dest.sin_port = htons(SM_EXT_BASE_PORT + Curr_CC_Replicas[i-1]);
                     dest.sin_addr.s_addr = inet_addr(Curr_Ext_Site_Addrs[Curr_CC_Sites[i-1]]);
                     // printf("Sending to replica %u, Message type: %u\n", i , mess->type);
-                    printf("dest port=%d, dest addr=%s\n",SM_EXT_BASE_PORT + Curr_CC_Replicas[i-1],Curr_Ext_Site_Addrs[Curr_CC_Sites[i-1]]);
+                    // printf("dest port=%d, dest addr=%s\n",SM_EXT_BASE_PORT + Curr_CC_Replicas[i-1],Curr_Ext_Site_Addrs[Curr_CC_Sites[i-1]]);
                     //dest.sin_port = htons(SM_EXT_BASE_PORT + CC_Replicas[i-1]);
                     //dest.sin_addr.s_addr = inet_addr(Ext_Site_Addrs[CC_Sites[i-1]]);
                     ret = spines_sendto(ns.sp_ext_s, mess, sizeof(signed_update_message),
@@ -999,7 +999,7 @@ void *ITRC_Master(void *data)
                 //MS2022 - Comment this print in actual runs
                 struct timeval prime_t;
                 gettimeofday(&prime_t,NULL);
-                printf("Received message of type %d from prime_sock at %lu, %lu\n",mess->type,prime_t.tv_sec,prime_t.tv_usec);
+                // printf("Received message of type %d from prime_sock at %lu, %lu\n",mess->type,prime_t.tv_sec,prime_t.tv_usec);
                 //printf("Prime [%d]: %d of %d\n", res->ord_num, res->event_idx, res->event_tot);
 
                 /* Check for valid message type */
@@ -1336,7 +1336,7 @@ void *ITRC_Master(void *data)
 
                 if (Type == CC_TYPE && mess->type == TC_SHARE) {
                     tc_mess = (tc_share_msg *)(mess + 1);
-                    printf("TC Share recevied from %u\n", mess->machine_id);
+                    // printf("TC Share recevied from %u\n", mess->machine_id);
                     /* Try to insert the TC share from this replica */
                     ITRC_Insert_TC_ID(tc_mess, mess->machine_id, NORMAL_ORD);
                     while (ITRC_TC_Ready_Deliver(&tc_final)) {
@@ -1349,7 +1349,7 @@ void *ITRC_Master(void *data)
                             break;
                         }
                         free(tc_final);
-                        printf("2. ITRC_Send_TC_Final  sent\n");
+                        // printf("2. ITRC_Send_TC_Final  sent\n");
                     }
                 }
                 else if (mess->type == STATE_XFER) {
@@ -1667,7 +1667,7 @@ void ITRC_Process_Prime_Ordinal(ordinal o, signed_message *mess, net_sock *ns)
         nBytes = sizeof(signed_message) + scada_mess->len;
         memcpy(up_hist[*idx].buff, scada_mess, nBytes);
         up_hist[*idx].ord = o;
-        printf("Passing to SCADA_MASTER\n");
+        // printf("Passing to SCADA_MASTER\n");
         IPC_Send(ns->ipc_s, (void *)scada_mess, nBytes, ns->ipc_remote);
     }
     else {
