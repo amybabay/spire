@@ -53,13 +53,10 @@ INCPATH       = -I. -I ../prime/src -I ../prime/stdutil/include -I ../spines/lib
 LINK          = g++
 LFLAGS        = -Wl,-O1
 
-RECONF_LIB    = ../prime/src/libreconfiguration.a
-
 LIBS 	= $(SUBLIBS) -lpthread \
 			../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 			../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
 			../spines/libspread-util/src/libspread-util.a \
-			$(RECONF_LIB) \
 			-lrt -ldl -lm -lcrypto -lcyaml
 
 TARGET	  = benchmark  
@@ -71,7 +68,10 @@ OBJECTS   = benchmark.o \
                 ../common/itrc.o \
 				../common/key_value.o \
             	../config/cJSON.o \
-            	../config/config_helpers.o
+            	../config/config_helpers.o \
+				../prime/src/config_utils.o \
+				../prime/src/parser.o \
+				../prime/src/key_generation.o
 
 .SUFFIXES: .o .c .cpp
 

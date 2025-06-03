@@ -75,7 +75,6 @@ extern "C"
 #include "stdutil/stdcarr.h"
 }
 
-#include "../../prime/src/parser.h"
 
 // todo: comment me out. you can insert these objects as extern in your masks.
 // rlModbusClient     modbus(modbusdaemon_MAILBOX,modbusdaemon_SHARED_MEMORY,modbusdaemon_SHARED_MEMORY_SIZE);

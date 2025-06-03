@@ -48,9 +48,6 @@
 #include "tc_wrapper.h"
 #include "../prime/OpenTC-1.1/TC-lib-1.0/TC.h" 
 
-#include "../prime/src/key_generation.h"
-#include "parser.h"
-
 #define TIME_GENERATE_SIG_SHARE 0
 #define TC_NUM_SITES 1 //JCS: don't want to modify whole thing, so just defined this here...
 

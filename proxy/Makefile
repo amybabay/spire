@@ -48,11 +48,10 @@
 CC=gcc
 CFLAGS+= -Wall -W -g
 TARGET=proxy
-RECONF_LIB = ../prime/src/libreconfiguration.a -lcyaml
 
 LIBS=-lpthread $(RECONF_LIB) ../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
            ../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
-		   -lrt -ldl -lcrypto -lpthread -lm
+		   -lrt -ldl -lcrypto -lpthread -lm -lcyaml
 		   
 INC= -I ../prime/stdutil/include -I ../spines/libspines/
 OBJECTS=proxy.o \
@@ -63,7 +62,10 @@ OBJECTS=proxy.o \
 		../common/itrc.o \
 		../common/key_value.o \
 		../config/cJSON.o \
-		../config/config_helpers.o
+		../config/config_helpers.o \
+		../prime/src/config_utils.o \
+		../prime/src/parser.o \
+		../prime/src/key_generation.o
 
 all: $(TARGET) 
 

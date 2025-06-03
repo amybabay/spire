@@ -57,12 +57,10 @@ INCPATH       = -I. -I$(PVB)/pvserver -I$(PRIME)/stdutil/include -I$(SPINES)/lib
 LINK          = g++
 LFLAGS        = -Wl,-O1
 
-RECONF_LIB = $(PRIME)/src/libreconfiguration.a
 
 LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(PRIME)/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 					$(SPINES)/libspines/libspines.a $(PRIME)/stdutil/lib/libstdutil.a \
-					$(RECONF_LIB) \
 					-lrt -ldl -lcrypto -lcyaml
 
 SOURCES       = jhu_hmi.cpp \
@@ -86,7 +84,10 @@ OBJECTS       = jhu_hmi.o \
         $(SPIRE)/common/itrc.o \
 		$(SPIRE)/common/key_value.o \
 		$(SPIRE)/config/cJSON.o \
-		$(SPIRE)/config/config_helpers.o
+		$(SPIRE)/config/config_helpers.o \
+		$(PRIME)/src/config_utils.o \
+		$(PRIME)/src/parser.o \
+		$(PRIME)/src/key_generation.o		
 TARGET        = jhu_hmi
 
 HEADERS       = pvapp.h \

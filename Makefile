@@ -85,7 +85,6 @@ reconfiguration: spines prime scada_master pvb $(RECONF_SUBDIRS)
 		$(MAKE) -C $$dir; \
 	done
 
-
 spines:
 	cd spines; ./configure; $(MAKE) -C daemon parser; $(MAKE)
 
