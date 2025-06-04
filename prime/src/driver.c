@@ -165,7 +165,7 @@ int main(int argc, char** argv)
   //MS2022
   VAR.Num_Servers=18;
   //UTIL_Client_Load_Addresses(); 
-  UTIL_Load_Addresses(); 
+  
 
   E_init(); 
   Init_Memory_Objects();
@@ -180,6 +180,7 @@ int main(int argc, char** argv)
   {
       Alarm(EXIT, "Failed to parse config file.\n");
   }
+  UTIL_Load_Addresses_From_Config(cfg); 
   OPENSSL_RSA_Read_Keys(VAR.My_Server_ID,RSA_CLIENT , cfg, ".");
   
   /* sprintf(buf, "latencies/client_%d.lat", My_Client_ID);

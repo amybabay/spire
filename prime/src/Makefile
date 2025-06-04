@@ -47,8 +47,11 @@ TC_LIB = ../OpenTC-1.1/TC-lib-1.0/.libs/libTC.a
 SPINES = -DSET_USE_SPINES 
 SPINES_LIB = ../../spines/libspines/libspines.a
 
+CYAML_INCLUDE = -I$(HOME)/.local/include
+CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+
 CC = gcc
-CFLAGS += -g -O2 -Wall -DNDEBUG $(SPINES) $(INC)  
+CFLAGS += -g -O2 -Wall -DNDEBUG $(SPINES) $(INC)  $(CYAML_INCLUDE)
 
 WRAPPER_OBJ = error_wrapper.o openssl_rsa.o
 
@@ -93,19 +96,19 @@ $(TC_LIB):
 	cd ../OpenTC-1.1/TC-lib-1.0/; ./configure; make
 
 gen_tpm_keys: $(GEN_TPM_KEYS_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/gen_tpm_keys $(GEN_TPM_KEYS_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lcrypto -ldl -lpthread -lrt -lcyaml
+	$(CC) $(LDFLAGS) -o ../bin/gen_tpm_keys $(GEN_TPM_KEYS_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lcrypto -ldl -lpthread -lrt $(CYAML_LIB) -lcyaml
 
 prime: $(PRIME_OBJ)
-	$(CC) $(LDFLAGS) $(CPPFLAGS) -o ../bin/prime $(PRIME_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
+	$(CC) $(LDFLAGS) $(CPPFLAGS) -o ../bin/prime $(PRIME_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt $(CYAML_LIB) -lcyaml
 
 driver: $(DRIVER_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/driver $(DRIVER_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
+	$(CC) $(LDFLAGS) -o ../bin/driver $(DRIVER_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt $(CYAML_LIB) -lcyaml
 
 config_manager:  $(CM_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/config_manager $(CM_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
+	$(CC) $(LDFLAGS) -o ../bin/config_manager $(CM_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt $(CYAML_LIB) -lcyaml
 
 config_agent:  $(CA_OBJ)
-	$(CC) $(LDFLAGS) -o ../bin/config_agent $(CA_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt -lcyaml
+	$(CC) $(LDFLAGS) -o ../bin/config_agent $(CA_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(TC_LIB) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt $(CYAML_LIB) -lcyaml
 
 config_disseminator: $(CD_OBJ)
 	$(CC) $(LDFLAGS) -o ../bin/config_disseminator $(CD_OBJ) $(STDUTIL_LIB) $(LIBSPREAD_UTIL) $(SPINES_LIB) -lm -lcrypto -ldl -lpthread -lrt

@@ -57,11 +57,13 @@ INCPATH       = -I. -I$(PVB)/pvserver -I$(PRIME)/stdutil/include -I$(SPINES)/lib
 LINK          = g++
 LFLAGS        = -Wl,-O1
 
+CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+
 
 LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(PRIME)/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 					$(SPINES)/libspines/libspines.a $(PRIME)/stdutil/lib/libstdutil.a \
-					-lrt -ldl -lcrypto -lcyaml
+					-lrt -ldl -lcrypto $(CYAML_LIB) -lcyaml
 
 SOURCES       = jhu_hmi.cpp \
 		mask1.cpp \

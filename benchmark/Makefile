@@ -53,11 +53,13 @@ INCPATH       = -I. -I ../prime/src -I ../prime/stdutil/include -I ../spines/lib
 LINK          = g++
 LFLAGS        = -Wl,-O1
 
+CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+
 LIBS 	= $(SUBLIBS) -lpthread \
 			../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 			../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
 			../spines/libspread-util/src/libspread-util.a \
-			-lrt -ldl -lm -lcrypto -lcyaml
+			-lrt -ldl -lm -lcrypto $(CYAML_LIB) -lcyaml
 
 TARGET	  = benchmark  
 OBJECTS   = benchmark.o \

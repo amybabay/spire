@@ -51,8 +51,11 @@ TARGET=proxy
 
 LIBS=-lpthread $(RECONF_LIB) ../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
            ../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
-		   -lrt -ldl -lcrypto -lpthread -lm -lcyaml
-		   
+		   -lrt -ldl -lcrypto -lpthread -lm $(CYAML_LIB) -lcyaml
+
+CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+
+
 INC= -I ../prime/stdutil/include -I ../spines/libspines/
 OBJECTS=proxy.o \
 		../common/scada_packets.o \

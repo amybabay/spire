@@ -55,11 +55,13 @@ CXX=g++
 CXXFLAGS += -std=gnu++11
 
 DNP3_DIR=../OpenPLC_v2/dnp3_build/install
+CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+
 LIBS=-lpthread ../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
            ../spines/libspines/libspines.a ../prime/stdutil/lib/libstdutil.a \
 		   $(DNP3_DIR)/lib/libasiodnp3.a $(DNP3_DIR)/lib/libasiopal.a \
 		   $(DNP3_DIR)/lib/libopendnp3.a $(DNP3_DIR)/lib/libopenpal.a \
-		   -lrt -ldl -lcrypto -lm -lcyaml
+		   -lrt -ldl -lcrypto -lm $(CYAML_LIB) -lcyaml
 INC= -I ../prime/stdutil/include -I ../spines/libspines/ -I $(DNP3_DIR)/include
 TARGET=dnp3_master
 OBJECTS=main.o \
