@@ -439,16 +439,16 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 {
 	EVP_PKEY *tpm_privkey = NULL;
 
-	fprintf(stderr, "=== BEGIN Loading Public Keys ===\n");
+	// fprintf(stderr, "=== BEGIN Loading Public Keys ===\n");
 	for (unsigned i = 0; i < cfg->sites_count; i++)
 	{
 		struct site *site = &cfg->sites[i];
-		fprintf(stderr, "Processing site: %s\n", site->name);
+		// fprintf(stderr, "Processing site: %s\n", site->name);
 
 		for (unsigned r = 0; r < site->replicas_count; r++)
 		{
 			struct replica *rep = &site->replicas[r];
-			fprintf(stderr, "  Loading public key for replica %u\n", rep->instance_id);
+			// fprintf(stderr, "  Loading public key for replica %u\n", rep->instance_id);
 			if (rep->instance_public_key)
 			{
 				EVP_PKEY *pubkey = load_public_key_from_pem(rep->instance_public_key);
@@ -464,9 +464,16 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 
 		for (unsigned c = 0; c < site->clients_count; c++)
 		{
+			int client_index = NULL;
 			struct client *client = &site->clients[c];
-			int client_index = client->client_id + MAX_NUM_SERVER_SLOTS;
-			fprintf(stderr, "  Loading public key for client %u (type: %s)\n", client->client_id, client->type);
+			if (	(strcmp(client->type, "JHU") == 0 && client->client_id== 1) 	||
+					(strcmp(client->type, "PNNL") == 0 && client->client_id == 2) 	||
+					(strcmp(client->type, "EMS") == 0 && client->client_id == 3)) {
+				client_index = client->client_id + MAX_NUM_SERVER_SLOTS + 100;
+			} else {
+				client_index = client->client_id + MAX_NUM_SERVER_SLOTS;
+			}
+			// fprintf(stderr, "  Loading public key for client %u (type: %s)\n", client->client_id, client->type);
 			if (client->instance_public_key)
 			{
 				EVP_PKEY *pubkey = load_public_key_from_pem(client->instance_public_key);
@@ -481,7 +488,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 		}
 	}
 
-	fprintf(stderr, "=== Loading Config Manager Public Key ===\n");
+	// fprintf(stderr, "=== Loading Config Manager Public Key ===\n");
 	char cm_key_path[512];
 	snprintf(cm_key_path, sizeof(cm_key_path), "%s/%s", key_base_path, "cm_keys/public_key.pem");
 	EVP_PKEY *cm_pubkey = load_key_from_file(cm_key_path, 0);
@@ -493,7 +500,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 	public_rsa_by_nm = EVP_PKEY_get1_RSA(cm_pubkey);
 	EVP_PKEY_free(cm_pubkey);
 
-	fprintf(stderr, "=== BEGIN Loading Private Key for This Host (my_id = %u, type = %u) ===\n", my_id, type);
+	// fprintf(stderr, "=== BEGIN Loading Private Key for This Host (my_id = %u, type = %u) ===\n", my_id, type);
 	if (type == RSA_SERVER)
 	{
 		for (unsigned i = 0; i < cfg->sites_count; i++)
@@ -504,14 +511,14 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 				struct replica *rep = &site->replicas[r];
 				if (rep->instance_id == my_id)
 				{
-					fprintf(stderr, "Found matching replica with ID %u\n", my_id);
+					// fprintf(stderr, "Found matching replica with ID %u\n", my_id);
 					struct host *host = find_host_for_replica(site, rep->host);
 					if (!host || !host->permanent_key_location)
 					{
 						fprintf(stderr, "  ERROR: Missing TPM key path for host %s\n", rep->host);
 						exit(EXIT_FAILURE);
 					}
-					fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
+					// fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
 
 					char full_path[512];
 					snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
@@ -522,7 +529,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 						exit(EXIT_FAILURE);
 					}
 
-					fprintf(stderr, "  Decrypting private key for replica...\n");
+					// fprintf(stderr, "  Decrypting private key for replica...\n");
 					EVP_PKEY *decrypted = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
 					if (!decrypted)
 					{
@@ -552,12 +559,12 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 					(strcmp(client->type, "EMS") == 0 && my_id == 3))
 				{
 					matched = 1;
-					fprintf(stderr, "Found HMI client (type: %s) with implied ID %u\n", client->type, my_id);
+					// fprintf(stderr, "Found HMI client (type: %s) with ID %u\n", client->type, my_id);
 				}
 				else if (client->client_id == my_id)
 				{
 					matched = 1;
-					fprintf(stderr, "Found benchmark/proxy client with ID %u\n", my_id);
+					// fprintf(stderr, "Found benchmark/proxy client with ID %u\n", my_id);
 				}
 
 				if (matched)
@@ -568,7 +575,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 						fprintf(stderr, "  ERROR: Missing TPM key path for client host %s\n", client->host);
 						exit(EXIT_FAILURE);
 					}
-					fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
+					// fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
 
 					char full_path[512];
 					snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
@@ -579,7 +586,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 						exit(EXIT_FAILURE);
 					}
 
-					fprintf(stderr, "  Decrypting private key for client...\n");
+					// fprintf(stderr, "  Decrypting private key for client...\n");
 					EVP_PKEY *decrypted = load_decrypted_key(client->encrypted_instance_private_key, tpm_privkey);
 					if (!decrypted)
 					{
@@ -597,11 +604,11 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 
 	if (tpm_privkey)
 	{
-		fprintf(stderr, "Freeing TPM key\n");
+		// fprintf(stderr, "Freeing TPM key\n");
 		EVP_PKEY_free(tpm_privkey);
 	}
 
-	fprintf(stderr, "=== Done loading keys ===\n");
+	// fprintf(stderr, "=== Done loading keys ===\n");
 }
 
 // /* Read all of the keys for servers or clients. All of the public keys

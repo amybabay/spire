@@ -143,8 +143,8 @@ void Gen_Msg()
     mess->global_configuration_number = My_Global_Configuration_Number; 
     nBytes = sizeof(signed_message) + mess->len;
     seq.seq_num++;
-    // printf("Sending benchmark msg to %s (seq: %u, client: %d)\n", 
-    //    itrc_main.ipc_remote, seq.seq_num, My_ID);
+    printf("Sending benchmark msg to %s (seq: %u, client: %d)\n", 
+       itrc_main.ipc_remote, seq.seq_num, My_ID);
 
     ret = IPC_Send(ipc_sock, (void *)mess, nBytes, itrc_main.ipc_remote);
     if (ret < 0) printf("Gen_Msg: IPC_Send error!\n");
@@ -153,7 +153,7 @@ void Gen_Msg()
 
 void Process_Msg()
 {
-    printf("Processing message.\n");
+    // printf("Processing message.\n");
     char buf[MAX_LEN];
     int ret, index,ret2; 
     double latency;
@@ -172,7 +172,7 @@ void Process_Msg()
     
     ben = (benchmark_msg *)(mess + 1);
 
-    //printf("BENCHMARK MSG [%d,%u]:\n", ben->sender, ben->seq.seq_num);
+    // printf("PROCESSING BENCHMARK MSG [%d,%u]:\n", ben->sender, ben->seq.seq_num);
     
     ping.tv_sec  = ben->ping_sec;
     ping.tv_usec = ben->ping_usec;

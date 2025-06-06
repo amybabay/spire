@@ -57,14 +57,14 @@ INCPATH       = -I. -I$(PVB)/pvserver -I$(PRIME)/stdutil/include \
 				-I$(SPINES)/libspines/ -I$(SPIRE)/common -I$(PRIME)/libspread-util/include
 LINK          = g++
 LFLAGS        = -Wl,-O1
-
-CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+INCPATH += -I../../prime/libcyaml/include
+LIBCYAML = ../../prime/libcyaml/build/release/libcyaml.a
 
 LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(PRIME)/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 					$(SPINES)/libspines/libspines.a $(PRIME)/stdutil/lib/libstdutil.a \
 					$(PRIME)/libspread-util/lib/libspread-util.a \
-					-lrt -ldl -lcrypto $(CYAML_LIB) -lcyaml
+					-lrt -ldl -lcrypto $(LIBCYAML) -lyaml
 
 SOURCES       = heco_hmi.cpp \
 		mask1.cpp \

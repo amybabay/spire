@@ -71,6 +71,7 @@
 #include "../config/config_helpers.h"
 #include "key_value.h"
 #include "stdutil/stddll.h"
+#include "../prime/src/config_utils.h"
 
 /* These are flags used in the TC queue */
 #define NORMAL_ORD 1
@@ -223,8 +224,12 @@ void *ITRC_Client(void *data)
    
     struct config *cfg = itrcd->cfg;
 
-    
-    OPENSSL_RSA_Read_Keys(My_ID, RSA_CLIENT, cfg, "../prime/bin");
+    if(is_hmi(My_ID, cfg)){
+        OPENSSL_RSA_Read_Keys(My_ID, RSA_CLIENT, cfg, "../../prime/bin");
+
+    } else {
+        OPENSSL_RSA_Read_Keys(My_ID, RSA_CLIENT, cfg, "../prime/bin");
+    }
     TC_Read_Public_Key_From_Config(cfg);
 
 
@@ -567,7 +572,7 @@ void *ITRC_Prime_Inject(void *data)
             /* Incoming NET message External spines network */
             if (Type == CC_TYPE && ns.sp_ext_s >= 0 && FD_ISSET(ns.sp_ext_s, &tmask)) {
                 nBytes = spines_recvfrom(ns.sp_ext_s, buff, MAX_LEN, 0, NULL, 0);
-                printf("Received from external spines.\n");
+                // printf("Received from external spines.\n");
                 if (nBytes <= 0) {
                     printf("Disconnected from Spines?\n");
                     FD_CLR(ns.sp_ext_s, &mask);

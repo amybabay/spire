@@ -944,7 +944,7 @@ int kill_all_components()
                     continue;
                 }
 
-                if (kill(pid, SIGKILL) == 0)
+                if (kill(pid, SIGTERM) == 0)
                 {
                     printf("Killed %s (PID %d)\n", comm, pid);
                     killed++;
@@ -1056,17 +1056,16 @@ void start_components_from_config(const struct config *cfg, const struct host *m
                     system(cmd);
 
                     if (strcmp(c->type, "JHU") == 0)
-                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./jhu_hmi/jhu_hmi %s &",
-                                 log_to_file ? "> ../prime/bin/logs/jhu_hmi.log" : "");
+                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/jhu_hmi/ && ./jhu_hmi %s &",
+                                 log_to_file ? "> ../../prime/bin/logs/jhu_hmi.log" : "");
                     else if (strcmp(c->type, "PNNL") == 0)
-                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./pnnl_hmi/pnnl_hmi %s &",
-                                 log_to_file ? "> ../prime/bin/logs/pnnl_hmi.log" : "");
+                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/pnnl_hmi/ && ./pnnl_hmi %s &",
+                                 log_to_file ? "> ../../prime/bin/logs/pnnl_hmi.log" : "");
                     else if (strcmp(c->type, "EMS") == 0)
-                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ && ./ems_hmi/ems_hmi %s &",
-                                 log_to_file ? "> ../prime/bin/logs/ems_hmi.log" : "");
+                        snprintf(cmd, sizeof(cmd), "cd ../../hmis/ems_hmi/ && ./ems_hmi %s &",
+                                 log_to_file ? "> ../../prime/bin/logs/ems_hmi.log" : "");
                     else if (strcmp(c->type, "proxy") == 0)
-                        snprintf(cmd, sizeof(cmd), "cd ../../proxy/ && ./proxy %u 1 %s &",
-                                 c->client_id, log_to_file ? "> ../prime/bin/logs/proxy.log" : "");
+                        snprintf(cmd, sizeof(cmd), "cd ../../proxy/ && ./proxy 10 1 &", log_to_file ? "> ../prime/bin/logs/proxy.log" : "");
                     else if (strcmp(c->type, "benchmark") == 0)
                         snprintf(cmd, sizeof(cmd), "cd ../../benchmark/ && ./benchmark %u 10000 10 %s &",
                                  c->client_id, log_to_file ? "> ../prime/bin/logs/benchmark.log" : "");

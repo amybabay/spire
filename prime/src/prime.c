@@ -81,7 +81,7 @@ int main(int argc, char **argv)
   Alarm_set_types(NONE);
   // Alarm_set_types(STATUS);
   // Alarm_set_types(PRINT);
-  // Alarm_set_types(DEBUG | STATUS | PRINT);
+  // Alarm_set_types(DEBUG);
   Alarm_enable_timestamp_high_res(NULL);
 
   Alarm(PRINT, "/===========================================================================\\\n");
@@ -143,7 +143,6 @@ int main(int argc, char **argv)
 
   // Load Spines Addresses
   UTIL_Load_Addresses_From_Config(cfg);
-
   ERROR_WRAPPER_Initialize();
 
   E_init();

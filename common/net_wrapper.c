@@ -114,7 +114,7 @@ void Init_SM_Replicas(struct config *cfg)
     Curr_num_k = cfg->tolerated_unavailable_replicas;
     Curr_req_shares = Curr_num_f + 1; 
 
-    printf("Initializing SM replicas from config with %d sites\n", Curr_num_sites);
+    // printf("Initializing SM replicas from config with %d sites\n", Curr_num_sites);
 
     // Count control centers
     for (unsigned i = 0; i < cfg->sites_count; i++) {
@@ -122,7 +122,7 @@ void Init_SM_Replicas(struct config *cfg)
             Curr_num_CC++;
     }
 
-    printf("Total control centers: %d\n", Curr_num_CC);
+    // printf("Total control centers: %d\n", Curr_num_CC);
 
     // Clear arrays
     memset(Curr_Ext_Site_Addrs, 0, sizeof(Curr_Ext_Site_Addrs));
@@ -139,33 +139,33 @@ void Init_SM_Replicas(struct config *cfg)
             id = r->instance_id;
 
             if (id == 0 || id > MAX_NUM_SERVER_SLOTS) {
-                fprintf(stderr, "Skipping replica with invalid ID: %d\n", id);
+                // fprintf(stderr, "Skipping replica with invalid ID: %d\n", id);
                 continue;
             }
 
             struct host *host = find_host_for_replica(s, r->spines_internal_daemon);
             if (!host) {
-                fprintf(stderr, "Error: Could not find host '%s' for replica %d\n", r->spines_internal_daemon, id);
+                // fprintf(stderr, "Error: Could not find host '%s' for replica %d\n", r->spines_internal_daemon, id);
                 continue;
             }
 
             if (host->runs_spines_external) {
                 snprintf(Curr_Ext_Site_Addrs[id - 1], sizeof(Curr_Ext_Site_Addrs[id - 1]), "%s", host->ip);
-                printf("[Replica %d] External Spines IP assigned: %s\n", id, host->ip);
+                // printf("[Replica %d] External Spines IP assigned: %s\n", id, host->ip);
             }
 
             if (host->runs_spines_internal) {
                 snprintf(Curr_Int_Site_Addrs[id - 1], sizeof(Curr_Int_Site_Addrs[id - 1]), "%s", host->ip);
-                printf("[Replica %d] Internal Spines IP assigned: %s\n", id, host->ip);
+                // printf("[Replica %d] Internal Spines IP assigned: %s\n", id, host->ip);
             }
 
             Curr_All_Sites[id - 1] = site_index;
-            printf("[Replica %d] Mapped to site index %d (%s)\n", id, site_index, s->name);
+            // printf("[Replica %d] Mapped to site index %d (%s)\n", id, site_index, s->name);
 
             if (site_index < Curr_num_CC) {
                 Curr_CC_Replicas[cc_rep] = id;
                 Curr_CC_Sites[cc_rep] = id - 1; 
-                printf("[Replica %d] Registered as Control Center (CC index %d)\n", id, cc_rep);
+                // printf("[Replica %d] Registered as Control Center (CC index %d)\n", id, cc_rep);
                 cc_rep++;
             }
             

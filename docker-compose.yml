@@ -4,92 +4,88 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.101.0/24
-          gateway: 192.168.101.1
+        - subnet: 192.168.0.0/24
+          gateway: 192.168.0.1
 
 services:
   spire1:
     image: spire-img
-    container_name: spire1
+    container_name: goldenrod1
+    environment:
+      - MY_HOSTNAME=goldenrod1
     networks:
       spire-net:
-        ipv4_address: 192.168.101.101
+        ipv4_address: 192.168.0.101
     cap_add:
       - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true
 
   spire2:
     image: spire-img
-    container_name: spire2
+    container_name: goldenrod2
+    environment:
+      - MY_HOSTNAME=goldenrod2
     networks:
       spire-net:
-        ipv4_address: 192.168.101.102
+        ipv4_address: 192.168.0.102
     cap_add:
       - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true
 
   spire3:
     image: spire-img
-    container_name: spire3
+    container_name: goldenrod3
+    environment:
+      - MY_HOSTNAME=goldenrod3
     networks:
       spire-net:
-        ipv4_address: 192.168.101.103
+        ipv4_address: 192.168.0.103
     cap_add:
       - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true
 
   spire4:
     image: spire-img
-    container_name: spire4
+    container_name: goldenrod4
+    environment:
+      - MY_HOSTNAME=goldenrod4
     networks:
       spire-net:
-        ipv4_address: 192.168.101.104
+        ipv4_address: 192.168.0.104
     cap_add:
       - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true
 
 
   spire5:
     image: spire-img
-    container_name: spire5
+    container_name: goldenrod5
+    environment:
+      - MY_HOSTNAME=goldenrod5
     networks:
       spire-net:
-        ipv4_address: 192.168.101.107
+        ipv4_address: 192.168.0.105
     cap_add:
       - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true
 
     
   spire6:
     image: spire-img
-    container_name: spire6
+    container_name: goldenrod6
+    environment:
+      - MY_HOSTNAME=goldenrod6
     networks:
       spire-net:
-        ipv4_address: 192.168.101.108
+        ipv4_address: 192.168.0.106
+    ports:
+      - "5050:5050"
     cap_add:
       - NET_ADMIN
-    volumes:
-      - ./pregenerated_keys:/app/spire/pregenerated_keys
-      - ./prime/bin/tpm_keys:/app/spire/prime/bin/tpm_keys
     tty: true
     stdin_open: true

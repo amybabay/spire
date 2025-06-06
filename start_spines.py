@@ -1,23 +1,67 @@
 import subprocess
 import socket
 import os
+import re
+
+testing_config_agent = True
+disabled = False
+
+def get_hostname():
+    return os.getenv("MY_HOSTNAME", "")
 
 def get_my_ip():
-    hostname = socket.gethostname()
+    hostname = get_hostname()
     return socket.gethostbyname(hostname)
 
-def start_spines(my_ip):
-    print(f"Starting Spines on IP: {my_ip}")
-    ctrl_cmd = ["./spines", "-c", "spines_ctrl.conf", "-p", "8200", "-I", my_ip]
-    # int_cmd = ["./spines", "-c", "spines_int.conf", "-p", "8100", "-I", my_ip]
-    # ext_cmd = ["./spines", "-c", "spines_ext.conf", "-p", "8120", "-I", my_ip]
-    subprocess.Popen(ctrl_cmd, cwd="/app/spire/spines/daemon")
-    # subprocess.Popen(int_cmd, cwd="/app/spire/spines/daemon")
-    # subprocess.Popen(ext_cmd, cwd="/app/spire/spines/daemon")
+def start_spines(config_file, port, ip):
+    cmd = ["./spines", "-c", config_file, "-p", str(port), "-I", ip]
+    subprocess.Popen(cmd, cwd="/app/spire/spines/daemon")
+
+def start_scada_master(num):
+    cmd = ["./scada_master", str(num), str(num)]
+    subprocess.Popen(cmd, cwd="/app/spire/scada_master")
+
+def start_prime(num):
+    cmd = ["./prime", "-i", str(num), "-g", str(num)]
+    subprocess.Popen(cmd, cwd="/app/spire/prime/bin")
+    
+def start_plc():
+    cmd = ["./openplc", "-m","502"]
+    subprocess.Popen(cmd, cwd="/app/spire/plcs/pnnl_plc")
+
+def start_config_agent(num):
+    cmd = ["./config_agent", "-h", "goldenrod" + str(num)]
+    subprocess.Popen(cmd, cwd="/app/spire/prime/bin")
 
 if __name__ == "__main__":
+    
+    hostname = get_hostname()
     ip = get_my_ip()
-    start_spines(ip)
 
-    # Hand control over to an interactive shell
+    match = re.match(r"goldenrod(\d)$", hostname)
+    if not match:
+        print(f"Unrecognized hostname: {hostname}")
+        exit(1)
+
+    num = int(match.group(1))
+
+    if(not disabled):
+        # Always run control spines
+        start_spines("spines_ctrl.conf", 8200, ip)
+
+        if(not testing_config_agent):
+            if 1 <= num <= 4:
+                # Internal spines, Prime, and SCADA Master
+                start_spines("spines_int.conf", 8100, ip)
+                start_prime(num)
+                start_scada_master(num)
+
+            if 1 <= num <= 6:
+                # External spines
+                start_spines("spines_ext.conf", 8120, ip) 
+        
+    if num == 5:
+        start_plc()
+
+    # Keep container alive
     os.execvp("/bin/bash", ["/bin/bash"])

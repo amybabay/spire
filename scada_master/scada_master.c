@@ -264,7 +264,7 @@ int main(int argc, char **argv)
                 gettimeofday(&now, NULL);
                 ben->pong_sec = 0;  // now.tv_sec;
                 ben->pong_usec = 0; // now.tv_usec;
-                printf("MS2022: In scada_master: RECEIVED BENCHMARK MESSAGE\n");
+                // printf("MS2022: In scada_master: RECEIVED BENCHMARK MESSAGE\n");
                 IPC_Send(ipc_sock, (void *)mess, ret, itrc_main.ipc_remote);
             }
             else if (mess->type == STATE_REQUEST)

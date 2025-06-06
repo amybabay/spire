@@ -55,7 +55,7 @@ SUBDIRS=hmis proxy modbus dnp3 benchmark plcs
 
 SS_SUBDIRS= relay_emulator proxy_iec61850 benchmarks_ss trip_master_v2 trip_master
 
-RECONF_SUBDIRS = hmis proxy dnp3 benchmark 
+RECONF_SUBDIRS = hmis proxy dnp3 benchmark plcs modbus
 
 # Build full Spire system (note: need to build libs separately first)
 all: prime $(SUBDIRS)
@@ -78,7 +78,7 @@ substation: prime $(SS_SUBDIRS)
 	done
 
 # Build core of Spire system for benchmarking (without PLCs and HMIs)
-core: spines prime scada_master benchmark hmis proxy
+core: spines prime scada_master benchmark 
 
 reconfiguration: spines prime scada_master pvb $(RECONF_SUBDIRS)
 	for dir in $(RECONF_SUBDIRS); do \

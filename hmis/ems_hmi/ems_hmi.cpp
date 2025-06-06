@@ -99,7 +99,7 @@ extern int32u My_Global_Configuration_Number;
 
 int renewable_active[3];
 
-char config_path[256] = "../prime/bin/received_configs/latest.yaml";
+char config_path[256] = "../../prime/bin/received_configs/latest.yaml";
 
 extern void modelInit();
 

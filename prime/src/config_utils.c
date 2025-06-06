@@ -487,3 +487,34 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
     *pub_key = load_key_from_file("cm_keys/public_key.pem", 0);
     return (*priv_key && *pub_key) ? 0 : -1;
 }
+
+/**
+ * Determines if a given client ID corresponds to an HMI based on its type and ID.
+ *
+ * @param client_id The client ID to check.
+ * @param cfg Pointer to the configuration structure.
+ * @return 1 if the client is an HMI, 0 otherwise.
+ */
+int is_hmi(unsigned client_id, struct config *cfg)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++) {
+        struct site *site = &cfg->sites[i];
+
+        for (unsigned j = 0; j < site->clients_count; j++) {
+            struct client *client = &site->clients[j];
+
+            if (client->client_id != client_id)
+                continue;
+
+            if ((strcmp(client->type, "JHU") == 0 && client_id == 1) ||
+                (strcmp(client->type, "PNNL") == 0 && client_id == 2) ||
+                (strcmp(client->type, "EMS") == 0 && client_id == 3)) {
+                return 1;
+            }
+
+            return 0; // Found the client, but it's not an HMI
+        }
+    }
+
+    return 0; // Client not found
+}

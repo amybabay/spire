@@ -533,7 +533,7 @@ void Initialize_Spines(int dummy, void *dummy_p)
   NET.Spines_Channel = -1;
 
   Alarm(PRINT, "Spines IP: "IPF", My IP: "IPF" My_Server_ID=%u\n", 
-	  IP(spines_ip), IP(my_ip),VAR.My_Server_ID);
+	  IP(ntohl(spines_ip)), IP(ntohl(my_ip)),VAR.My_Server_ID);
 #if 0
   /* ========== Connect to spines for Reliable (Bounded) ========= */
   spines_recv_sk = -1;

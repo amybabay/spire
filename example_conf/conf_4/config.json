@@ -203,7 +203,7 @@
                     "protocol":"modbus",
                     "scenario":"PNNL",
                     "PORT":502,
-                    "IP":"192.168.0.107",
+                    "IP":"192.168.0.105",
                     "NUM_CYCLES":3,
                     "DEBUG":1,
                     "CYCLES": [

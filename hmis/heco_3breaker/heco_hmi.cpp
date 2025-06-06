@@ -92,7 +92,7 @@ int Script_Breaker_Index;
 int Script_Breaker_Val;
 sp_time Next_Button, Button_Pressed_Duration;
 
-char config_path[256] = "../prime/bin/received_configs/latest.yaml";
+char config_path[256] = "../../prime/bin/received_configs/latest.yaml";
 
 extern int32u My_Global_Configuration_Number;
 

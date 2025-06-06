@@ -53,9 +53,9 @@ INC = -I ../prime/stdutil/include -I ../spines/libspines -I ../common -I ../prim
 TC_LIB=../prime/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a
 LIBSPREAD_UTIL=../prime/stdutil/lib/libstdutil.a
 SPINES_LIB=../spines/libspines/libspines.a
-CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
-
-LDLIBS += $(CYAML_LIB) -lcyaml
+INC += -I../prime/libcyaml/include
+LIBCYAML = ../prime/libcyaml/build/release/libcyaml.a
+LDLIBS += $(LIBCYAML) -lyaml
 
 SM_OBJ=scada_master.o \
 		queue.o \
@@ -106,7 +106,7 @@ scada_master.o: scada_master.c ../common/scada_packets.h \
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INC) -o scada_master.o scada_master.c 
 
 scada_master: $(SM_OBJ)
-	$(CC) $(LDFLAGS) -o scada_master $(SM_OBJ) $(TC_LIB) $(LIBSPREAD_UTIL) $(SPINES_LIB) -lpthread -ldl -lcrypto -lm -lrt $(CYAML_LIB) -lcyaml $(LDLIBS)
+	$(CC) $(LDFLAGS) -o scada_master $(SM_OBJ) $(TC_LIB) $(LIBSPREAD_UTIL) $(SPINES_LIB) -lpthread -ldl -lcrypto -lm -lrt $(LIBCYAML) -lyaml $(LDLIBS)
 
 conf_scada_master.o: conf_scada_master.c ../common/conf_scada_packets.h \
                 ../common/conf_net_wrapper.h ../common/def.h ../common/conf_openssl_rsa.h \
@@ -121,7 +121,7 @@ generate_keys.o: generate_keys.c ../common/itrc.h ../common/tc_wrapper.h
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INC) -o generate_keys.o generate_keys.c
 
 gen_keys: $(GEN_KEYS_OBJ)
-	$(CC) $(LDFLAGS) -o gen_keys $(GEN_KEYS_OBJ) $(LIBSPREAD_UTIL) $(TC_LIB) -lcrypto -ldl -lpthread -lrt $(CYAML_LIB) -lcyaml
+	$(CC) $(LDFLAGS) -o gen_keys $(GEN_KEYS_OBJ) $(LIBSPREAD_UTIL) $(TC_LIB) -lcrypto -ldl -lpthread -lrt $(LIBCYAML) -lyaml
 
 conf_generate_keys.o: conf_generate_keys.c ../common/conf_itrc.h ../common/conf_tc_wrapper.h 
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INC) -o conf_generate_keys.o conf_generate_keys.c

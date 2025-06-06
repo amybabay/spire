@@ -82,7 +82,7 @@ int ipc_sock;
 itrc_data itrc_in, itrc_out;
 extern int32u My_Global_Configuration_Number;
 
-char config_path[256] = "../prime/bin/received_configs/latest.yaml";
+char config_path[256] = "../../prime/bin/received_configs/latest.yaml";
 
 void itrc_init(int ac, char **av)
 {

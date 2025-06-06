@@ -13,5 +13,6 @@ void generate_keys_for_client(struct client *client, struct host *host);
 void generate_keys(struct config *cfg);
 struct config *load_and_process_config(const char *input_yaml, int simulate_tpm);
 int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key);
+int is_hmi(unsigned client_id, struct config *cfg);
 
 #endif // CONFIG_UTILS_H

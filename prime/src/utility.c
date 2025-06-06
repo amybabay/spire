@@ -1678,18 +1678,21 @@ void UTIL_Load_Addresses_From_Config(struct config *cfg)
 				Alarm(EXIT, "Host '%s' not found or missing IP for replica %u\n", daemon_name, rep->instance_id);
 			}
 
-			in_addr_t net_addr = inet_addr(found_host->ip);
-			if (net_addr == INADDR_NONE)
-			{
-				Alarm(EXIT, "Invalid IP address for host '%s': %s\n", found_host->name, found_host->ip);
-			}
+			// in_addr_t net_addr = inet_addr(found_host->ip);
+			// if (net_addr == INADDR_NONE)
+			// {
+			// 	Alarm(EXIT, "Invalid IP address for host '%s': %s\n", found_host->name, found_host->ip);
+			// }
 
-			// Convert from network byte order to host byte order so later htonl() will work correctly
-			in_addr_t host_addr = ntohl(net_addr);
+			// // Convert from network byte order to host byte order so later will work correctly
+			// in_addr_t host_addr = ntohl(net_addr);
 
-			NET.server_address_spines[rep->instance_id] = host_addr;
-			NET.server_address[rep->instance_id] = host_addr;
-
+			// NET.server_address_spines[rep->instance_id] = host_addr;
+			// NET.server_address[rep->instance_id] = host_addr;
+			NET.server_address_spines[rep->instance_id] = ntohl( inet_addr(found_host->ip));
+			NET.server_address[rep->instance_id] = ntohl( inet_addr(found_host->ip));
+			Alarm(PRINT, "Spines IP: "IPF", My IP: "IPF" My_Server_ID=%u\n", 
+				IP(NET.server_address_spines[rep->instance_id]), IP(NET.server_address[rep->instance_id]),VAR.My_Server_ID);
 			replica_index++;
 		}
 	}

@@ -58,13 +58,14 @@ INCPATH       = -I. -I$(PVB)/pvserver -I$(PRIME)/stdutil/include \
 LINK          = g++
 LFLAGS        = -Wl,-O1
 
-CYAML_LIB = -L$(HOME)/.local/lib -Wl,-rpath=$(HOME)/.local/lib
+LIBCYAML = ../../prime/libcyaml/build/release/libcyaml.a
+INCPATH += -I../../prime/libcyaml/include
 
 
 LIBS          = $(SUBLIBS) $(PVB)/pvserver/libpvsmt.a -lpthread \
 					$(PRIME)/OpenTC-1.1/TC-lib-1.0/.libs/libTC.a \
 					$(SPINES)/libspines/libspines.a $(PRIME)/stdutil/lib/libstdutil.a \
-					-lrt -ldl -lcrypto $(CYAML_LIB) -lcyaml
+					-lrt -ldl -lcrypto $(LIBCYAML) -lyaml
 
 LDFLAGS += -L/usr/local/lib
 

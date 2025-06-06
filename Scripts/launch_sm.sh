@@ -1,7 +1,7 @@
 #!/bin/bash
 
 session="scada_$(date +%Y%m%d_%H%M%S)"
-containers=(spire1 spire2 spire3 spire4)
+containers=(goldenrod1 goldenrod2 goldenrod3 goldenrod4)
 
 tmux new-session -d -s "$session" -n "scada_master" \
     "docker exec -it ${containers[0]} bash -c 'cd scada_master && ./scada_master 1 1; exec bash'"

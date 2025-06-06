@@ -7,22 +7,22 @@ sites:
     type: CONTROL_CENTER
     hosts:
       - name: goldenrod1
-        ip: 192.168.101.101
+        ip: 192.168.0.101
         permanent_key_location: "tpm_keys/goldenrod1_tpm_private.pem"
         runs_spines_internal: 1
         runs_spines_external: 1
       - name: goldenrod2
-        ip: 192.168.101.102
+        ip: 192.168.0.102
         permanent_key_location: "tpm_keys/goldenrod2_tpm_private.pem"
         runs_spines_internal: 1
         runs_spines_external: 1
       - name: goldenrod3
-        ip: 192.168.101.103
+        ip: 192.168.0.103
         permanent_key_location: "tpm_keys/goldenrod3_tpm_private.pem"
         runs_spines_internal: 1
         runs_spines_external: 1
       - name: goldenrod4
-        ip: 192.168.101.104
+        ip: 192.168.0.104
         permanent_key_location: "tpm_keys/goldenrod4_tpm_private.pem"
         runs_spines_internal: 1
         runs_spines_external: 1
@@ -48,22 +48,22 @@ sites:
   - name: plc_site
     type: CLIENT
     hosts:
-      - name: goldenrod10
+      - name: goldenrod5
         permanent_key_location: "tpm_keys/goldenrod10_tpm_private.pem"
-        ip: 192.168.101.107
+        ip: 192.168.0.105
         runs_spines_external: 1
 
-  - name: hmi_site
+  - name: benchmark_site
     type: CLIENT
     hosts:
-      - name: goldenrod11
+      - name: goldenrod6
         permanent_key_location: "tpm_keys/goldenrod11_tpm_private.pem"
-        ip: 192.168.101.108
+        ip: 192.168.0.106
         runs_spines_external: 1
     clients:
-      - client_id: 1 
-        host: goldenrod11
-        spines_external_daemon: goldenrod11
+      - client_id: 1
+        host: goldenrod6
+        spines_external_daemon: goldenrod6
         type: JHU #(hmis (JHU, PNNL, or EMS), proxy, benchmark)  
         # instance_public_key: XXXX
         # encrypted_instance_private_key: XXXX

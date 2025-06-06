@@ -1,0 +1,244 @@
+version: "3.9"
+
+networks:
+  spire-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.0.0/24
+          gateway: 192.168.0.1
+
+services:
+  spire1:
+    image: spire-img
+    container_name: goldenrod1
+    environment:
+      - MY_HOSTNAME=goldenrod1
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.101
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire2:
+    image: spire-img
+    container_name: goldenrod2
+    environment:
+      - MY_HOSTNAME=goldenrod2
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.102
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire3:
+    image: spire-img
+    container_name: goldenrod3
+    environment:
+      - MY_HOSTNAME=goldenrod3
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.103
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire4:
+    image: spire-img
+    container_name: goldenrod4
+    environment:
+      - MY_HOSTNAME=goldenrod4
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.104
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire5:
+    image: spire-img
+    container_name: goldenrod5
+    environment:
+      - MY_HOSTNAME=goldenrod5
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.105
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire6:
+    image: spire-img
+    container_name: goldenrod6
+    environment:
+      - MY_HOSTNAME=goldenrod6
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.106
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire7:
+    image: spire-img
+    container_name: goldenrod7
+    environment:
+      - MY_HOSTNAME=goldenrod7
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.107
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire8:
+    image: spire-img
+    container_name: goldenrod8
+    environment:
+      - MY_HOSTNAME=goldenrod8
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.108
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire9:
+    image: spire-img
+    container_name: goldenrod9
+    environment:
+      - MY_HOSTNAME=goldenrod9
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.109
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire10:
+    image: spire-img
+    container_name: goldenrod10
+    environment:
+      - MY_HOSTNAME=goldenrod10
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.110
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire11:
+    image: spire-img
+    container_name: goldenrod11
+    environment:
+      - MY_HOSTNAME=goldenrod11
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.111
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire12:
+    image: spire-img
+    container_name: goldenrod12
+    environment:
+      - MY_HOSTNAME=goldenrod12
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.112
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire13:
+    image: spire-img
+    container_name: goldenrod13
+    environment:
+      - MY_HOSTNAME=goldenrod13
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.113
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire14:
+    image: spire-img
+    container_name: goldenrod14
+    environment:
+      - MY_HOSTNAME=goldenrod14
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.114
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire15:
+    image: spire-img
+    container_name: goldenrod15
+    environment:
+      - MY_HOSTNAME=goldenrod15
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.115
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire16:
+    image: spire-img
+    container_name: goldenrod16
+    environment:
+      - MY_HOSTNAME=goldenrod16
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.116
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire17:
+    image: spire-img
+    container_name: goldenrod17
+    environment:
+      - MY_HOSTNAME=goldenrod17
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.117
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  spire18:
+    image: spire-img
+    container_name: goldenrod18
+    environment:
+      - MY_HOSTNAME=goldenrod18
+    networks:
+      spire-net:
+        ipv4_address: 192.168.0.118
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
