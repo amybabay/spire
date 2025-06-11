@@ -278,7 +278,7 @@ signed_message* PRE_ORDER_Construct_PO_Ack(int32u *more_to_ack, int32u send_all_
       /* Increase the number of parts thus far in the po_ack message */
       nparts++;
 
-      if(nparts == MAX_ACK_PARTS)
+      if(nparts == DATA.PO.po_ack_max_parts)
         goto finish;
     }
 
@@ -300,11 +300,11 @@ signed_message* PRE_ORDER_Construct_PO_Ack(int32u *more_to_ack, int32u send_all_
     return NULL;
   }
 
-  if (nparts > MAX_ACK_PARTS) { 
+  if (nparts > DATA.PO.po_ack_max_parts) { 
     Alarm(EXIT,"%d BIG LOCAL ACK nparts = %d\n", VAR.My_Server_ID, nparts); 
   }
 
-  if(nparts == MAX_ACK_PARTS) {
+  if(nparts == DATA.PO.po_ack_max_parts) {
     Alarm(DEBUG, "There may be more to ack!\n");
     *more_to_ack = 1;
   }

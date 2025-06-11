@@ -979,6 +979,8 @@ void *ITRC_Master(void *data)
     }
     pthread_mutex_unlock(&wait_mutex); 
 
+    printf("Scada Master ready, Configuration ID: %u\n", cfg->configuration_id);
+    
     while (1) {
 
         tmask = mask;

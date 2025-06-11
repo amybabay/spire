@@ -2540,6 +2540,7 @@ void PR_Resume_Normal_Operation()
 
     /* Next, startup all normal Prime periodic functions and timers */
     Alarm(PRINT,"Called PR_Resume_Normal_operations\n");
+    Alarm(PRINT, "Prime ready, Configuration ID: %u\n", DATA.NM.global_configuration_number);
     if(DATA.NM.OOB_Reconfig_Inprogress){
 	 DATA.NM.OOB_Reconfig_Inprogress = 0;
 	}

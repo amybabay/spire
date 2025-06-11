@@ -32,6 +32,19 @@ const char spines_external_key_dir[] = "../../spines/daemon/external_keys";
 
 typedef struct
 {
+    int spines_int;
+    int spines_ext;
+    int prime;
+    int scada_master;
+    int jhu_hmi;
+    int pnnl_hmi;
+    int ems_hmi;
+    int proxy;
+    int benchmark;
+} ComponentFlags;
+
+typedef struct
+{
     const char *ip;
     unsigned id;
 } DaemonEntry;
@@ -80,14 +93,14 @@ int Handle_Verified_Config(const char *yaml_data, size_t yaml_len);
 void Cleanup_Fragments(void);
 
 static struct host *find_host_by_name(const struct config *cfg, const char *name);
-void start_components_from_config(const struct config *cfg, const struct host *me);
-int kill_all_components(void);
+void start_components_from_config(const struct config *cfg, const struct host *me, ComponentFlags *restarted);
+int kill_all_components(ComponentFlags *flags);
 
 void generate_spines_topologies(const struct config *cfg);
 
 int main(int argc, char **argv)
 {
-    Alarm_set_types(PRINT | DEBUG);
+    Alarm_set_types(PRINT);
 
     Usage(argc, argv);
 
@@ -370,17 +383,18 @@ int Handle_Verified_Config(const char *buf, size_t len)
         free_yaml_config(&cfg);
         return 0;
     }
-
+    ComponentFlags killed = {0};
+    ComponentFlags restarted = {0};
+    kill_all_components(&killed);
     generate_spines_topologies(cfg);
     struct host *me = find_host_by_name(cfg, Host_Name);
     if (!me)
     {
         Alarm(PRINT, "Warning: Host '%s' not found in config. Skipping component startup.\n", Host_Name);
-        kill_all_components();
         free_yaml_config(&cfg);
         return 0;
     }
-    kill_all_components();
+
     sleep(1);
 
     const char *dir = "received_configs";
@@ -427,8 +441,9 @@ int Handle_Verified_Config(const char *buf, size_t len)
         Alarm(PRINT, "Config_Agent: Updated %s with latest config\n", latest_config_path);
     }
 
-    start_components_from_config(cfg, me);
+    start_components_from_config(cfg, me, &restarted);
 
+    pad_killed_logs(&killed, &restarted);
     free_yaml_config(&cfg);
     return 0;
 }
@@ -710,157 +725,6 @@ static void write_spines_keys(const char *dir, int id,
     }
 }
 
-// /**
-//  * @brief Generates internal and external Spines topology configuration files and writes daemon key files.
-//  *
-//  * This function does the following:
-//  * - Iterates over all hosts and replicas in the system configuration.
-//  * - Collects IP addresses of daemons that run internal or external Spines daemons.
-//  * - Writes public keys for all Spines daemons and private keys for those running on the current host.
-//  * - Builds `spines_int.conf` representing a full mesh of internal Spines daemons.
-//  * - Builds `spines_ext.conf` representing a full mesh among replicas, with additional edges to client hosts.
-//  *
-//  * Topology IDs are assigned starting at 1 and correspond to the order of insertion into the respective
-//  * daemon arrays. Key files are written to `../../spines/daemon/keys/internal_*.pem` and `external_*.pem`.
-//  *
-//  * @param cfg Pointer to the parsed YAML configuration containing hosts, replicas, and key material.
-//  *
-//  * @note The `Host_Name` global must be set to the current host's name prior to calling this function.
-//  *       Keys are only written for daemons running on the current host.
-//  *
-//  * Output files generated:
-//  * - `spines_int.conf` (in current working directory)
-//  * - `spines_ext.conf` (in current working directory)
-//  * - PEM key files in `../../spines/daemon/keys/`
-//  */
-// void generate_spines_topologies(const struct config *cfg)
-// {
-//     DaemonEntry internal_daemons[MAX_DAEMONS];
-//     DaemonEntry external_replicas[MAX_DAEMONS];
-//     DaemonEntry external_clients[MAX_DAEMONS];
-//     size_t internal_count = 0, replica_ext_count = 0, client_ext_count = 0;
-
-
-//     // for each site
-//     for (unsigned i = 0; i < cfg->sites_count; i++)
-//     {
-//         struct site *site = &cfg->sites[i];
-
-//         // for each host
-//         for (unsigned j = 0; j < site->hosts_count; j++)
-//         {
-//             struct host *h = &site->hosts[j];
-
-//             // if it runs spines internal, write its public key
-//             if (h->runs_spines_internal)
-//             {
-//                 append_daemon(internal_daemons, &internal_count, h->ip);
-//                 int id = internal_count;
-//                 write_spines_keys(spines_internal_key_dir, id,
-//                                   h->spines_internal_public_key,
-//                                   h->encrypted_spines_internal_private_key,
-//                                   h->permanent_key_location,
-//                                   strcmp(h->name, Host_Name) == 0);
-//             }
-
-//             // if the site is a client site and it runs spines external, write its public key
-//             if (site->type == CLIENT && h->runs_spines_external)
-//             {
-//                 append_daemon(external_clients, &client_ext_count, h->ip);
-
-//                 int id = replica_ext_count + client_ext_count;
-//                 write_spines_keys(spines_external_key_dir, id,
-//                                   h->spines_external_public_key,
-//                                   h->encrypted_spines_external_private_key,
-//                                   h->permanent_key_location,
-//                                   strcmp(h->name, Host_Name) == 0);
-//             }
-//         }
-//     }
-//     for (unsigned i = 0; i < cfg->sites_count; i++)
-//     {
-//         struct site *site = &cfg->sites[i];
-
-//         if (site->type != DATA_CENTER)
-//         {
-//             for (unsigned j = 0; j < site->replicas_count; j++)
-//             {
-//                 struct replica *r = &site->replicas[j];
-
-//                 struct host *int_host = find_host_by_name(cfg, r->spines_internal_daemon);
-//                 if (int_host)
-//                 {
-//                     append_daemon(internal_daemons, &internal_count, int_host->ip);
-//                     int id = internal_count;
-//                     write_spines_keys(spines_internal_key_dir, id,
-//                                       int_host->spines_internal_public_key,
-//                                       int_host->encrypted_spines_internal_private_key,
-//                                       int_host->permanent_key_location,
-//                                       strcmp(int_host->name, Host_Name) == 0);
-//                 }
-
-//                 struct host *ext_host = find_host_by_name(cfg, r->spines_external_daemon);
-//                 if (ext_host)
-//                 {
-//                     append_daemon(external_replicas, &replica_ext_count, ext_host->ip);
-//                     int id = replica_ext_count;
-//                     write_spines_keys(spines_external_key_dir, id,
-//                                       ext_host->spines_external_public_key,
-//                                       ext_host->encrypted_spines_external_private_key,
-//                                       ext_host->permanent_key_location,
-//                                       strcmp(ext_host->name, Host_Name) == 0);
-//                 }
-//             }
-//         }
-//     }
-
-//     FILE *base_fp = fopen(BASE_SPINES_CONFIG, "r");
-//     if (!base_fp)
-//     {
-//         perror("Failed to open base config file");
-//         return;
-//     }
-//     write_topology_file(SPINES_INT_FILE, internal_daemons, internal_count, base_fp);
-
-//     FILE *out = fopen(SPINES_EXT_FILE, "w");
-//     if (!out)
-//     {
-//         perror("Failed to open spines_ext.conf");
-//         fclose(base_fp);
-//         return;
-//     }
-
-//     fseek(base_fp, 0, SEEK_SET);
-//     char line[1024];
-//     while (fgets(line, sizeof(line), base_fp))
-//     {
-//         fputs(line, out);
-//     }
-//     fclose(base_fp);
-
-//     fprintf(out, "\nHosts {\n");
-//     for (size_t i = 0; i < replica_ext_count; i++)
-//         fprintf(out, "    %zu %s\n", i + 1, external_replicas[i].ip);
-//     for (size_t i = 0; i < client_ext_count; i++)
-//         fprintf(out, "    %zu %s\n", replica_ext_count + i + 1, external_clients[i].ip);
-
-//     fprintf(out, "}\n\n");
-
-//     fprintf(out, "Edges {\n");
-//     for (size_t i = 0; i < replica_ext_count; i++)
-//     {
-//         for (size_t j = i + 1; j < replica_ext_count; j++)
-//         {
-//             fprintf(out, "    %zu %zu 100\n", i + 1, j + 1);
-//         }
-//         for (size_t j = 0; j < client_ext_count; j++)
-//         {
-//             fprintf(out, "    %u %u 100\n", i + 1, (unsigned)(replica_ext_count + j + 1));
-//         }
-//     }
-//     fprintf(out, "}\n");
-//     fclose(out);
-// }
 void generate_spines_topologies(const struct config *cfg)
 {
     DaemonEntry internal_daemons[MAX_DAEMONS];
@@ -871,15 +735,18 @@ void generate_spines_topologies(const struct config *cfg)
     int internal_id = 0;
     int external_id = 0;
 
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
 
-        for (unsigned j = 0; j < site->hosts_count; j++) {
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
             struct host *h = &site->hosts[j];
             int is_local = (strcmp(h->name, Host_Name) == 0);
 
             // ---- Internal Daemon Handling ----
-            if (h->runs_spines_internal) {
+            if (h->runs_spines_internal)
+            {
                 append_daemon(internal_daemons, &internal_count, h->ip);
                 internal_id = internal_count;
 
@@ -891,11 +758,15 @@ void generate_spines_topologies(const struct config *cfg)
             }
 
             // ---- External Daemon Handling ----
-            if (h->runs_spines_external) {
-                if (site->type == CLIENT) {
+            if (h->runs_spines_external)
+            {
+                if (site->type == CLIENT)
+                {
                     append_daemon(external_clients, &client_count, h->ip);
                     external_id = core_count + client_count;
-                } else {
+                }
+                else
+                {
                     append_daemon(external_core, &core_count, h->ip);
                     external_id = core_count;
                 }
@@ -911,7 +782,8 @@ void generate_spines_topologies(const struct config *cfg)
 
     // ----- INTERNAL TOPOLOGY -----
     FILE *base_fp = fopen(BASE_SPINES_CONFIG, "r");
-    if (!base_fp) {
+    if (!base_fp)
+    {
         perror("Failed to open base config");
         return;
     }
@@ -921,13 +793,15 @@ void generate_spines_topologies(const struct config *cfg)
 
     // ----- EXTERNAL TOPOLOGY -----
     FILE *out = fopen(SPINES_EXT_FILE, "w");
-    if (!out) {
+    if (!out)
+    {
         perror("Failed to open spines_ext.conf");
         return;
     }
 
     base_fp = fopen(BASE_SPINES_CONFIG, "r");
-    if (!base_fp) {
+    if (!base_fp)
+    {
         perror("Failed to reopen base config");
         fclose(out);
         return;
@@ -947,13 +821,15 @@ void generate_spines_topologies(const struct config *cfg)
 
     fprintf(out, "Edges {\n");
     // Full mesh among core
-    for (size_t i = 0; i < core_count; i++) {
+    for (size_t i = 0; i < core_count; i++)
+    {
         for (size_t j = i + 1; j < core_count; j++)
             fprintf(out, "    %zu %zu 100\n", i + 1, j + 1);
     }
 
     // Core → client connections
-    for (size_t i = 0; i < core_count; i++) {
+    for (size_t i = 0; i < core_count; i++)
+    {
         for (size_t j = 0; j < client_count; j++)
             fprintf(out, "    %zu %zu 100\n", i + 1, core_count + j + 1);
     }
@@ -961,7 +837,6 @@ void generate_spines_topologies(const struct config *cfg)
     fprintf(out, "}\n");
     fclose(out);
 }
-
 
 /**
  * Checks if a process name matches a known component (spines, prime, or scada_master).
@@ -986,6 +861,39 @@ int is_target_process(const char *name)
     return 0;
 }
 
+void pad_killed_logs(const ComponentFlags *killed, const ComponentFlags *restarted)
+{
+    if (killed->prime && !restarted->prime) {
+        system("printf '\\n%.0s' {1..50} >> logs/prime.log");
+        system("echo \"[KILLED BY CONFIG AGENT] prime\" >> logs/prime.log");
+    }
+    if (killed->scada_master && !restarted->scada_master) {
+        system("printf '\\n%.0s' {1..50} >> logs/sm.log");
+        system("echo \"[KILLED BY CONFIG AGENT] scada_master\" >> logs/sm.log");
+    }
+    if (killed->jhu_hmi && !restarted->jhu_hmi) {
+        system("printf '\\n%.0s' {1..50} >> logs/jhu_hmi.log");
+        system("echo \"[KILLED BY CONFIG AGENT] jhu_hmi\" >> logs/jhu_hmi.log");
+    }
+    if (killed->pnnl_hmi && !restarted->pnnl_hmi) {
+        system("printf '\\n%.0s' {1..50} >> logs/pnnl_hmi.log");
+        system("echo \"[KILLED BY CONFIG AGENT] pnnl_hmi\" >> logs/pnnl_hmi.log");
+    }
+    if (killed->ems_hmi && !restarted->ems_hmi) {
+        system("printf '\\n%.0s' {1..50} >> logs/ems_hmi.log");
+        system("echo \"[KILLED BY CONFIG AGENT] ems_hmi\" >> logs/ems_hmi.log");
+    }
+    if (killed->proxy && !restarted->proxy) {
+        system("printf '\\n%.0s' {1..50} >> prime/bin/logs/proxy.log");
+        system("echo \"[KILLED BY CONFIG AGENT] proxy\" >> logs/proxy.log");
+    }
+    if (killed->benchmark && !restarted->benchmark) {
+        system("printf '\\n%.0s' {1..50} >> logs/benchmark.log");
+        system("echo \"[KILLED BY CONFIG AGENT] benchmark\" >> logs/benchmark.log");
+    }
+}
+
+
 /**
  * Scans all running processes and forcibly terminates known system components.
  *
@@ -994,7 +902,7 @@ int is_target_process(const char *name)
  *
  * @return Number of processes successfully killed, or -1 on failure to open /proc.
  */
-int kill_all_components()
+int kill_all_components(ComponentFlags *flags)
 {
     DIR *proc_dir = opendir("/proc");
     struct dirent *entry;
@@ -1079,6 +987,21 @@ int kill_all_components()
                 {
                     printf("Killed %s (PID %d)\n", comm, pid);
                     killed++;
+
+                    if (strcmp(comm, "prime") == 0)
+                        flags->prime = 1;
+                    else if (strcmp(comm, "scada_master") == 0)
+                        flags->scada_master = 1;
+                    else if (strcmp(comm, "jhu_hmi") == 0)
+                        flags->jhu_hmi = 1;
+                    else if (strcmp(comm, "pnnl_hmi") == 0)
+                        flags->pnnl_hmi = 1;
+                    else if (strcmp(comm, "ems_hmi") == 0)
+                        flags->ems_hmi = 1;
+                    else if (strcmp(comm, "proxy") == 0)
+                        flags->proxy = 1;
+                    else if (strcmp(comm, "benchmark") == 0)
+                        flags->benchmark = 1;
                 }
                 else
                 {
@@ -1109,7 +1032,7 @@ void remove_spines_tmp_files()
     }
 }
 
-void start_components_from_config(const struct config *cfg, const struct host *me)
+void start_components_from_config(const struct config *cfg, const struct host *me, ComponentFlags *restarted)
 {
     remove_spines_tmp_files();
 
@@ -1122,6 +1045,7 @@ void start_components_from_config(const struct config *cfg, const struct host *m
                  "cd ../../spines/daemon && ./spines -p %d -c spines_int.conf -I %s -kd %s > ../../prime/bin/logs/spines_int.log &",
                  SPINES_PORT, me->ip, spines_internal_key_dir);
         system(cmd);
+        restarted->spines_int = 1;
     }
 
     if (me->runs_spines_external)
@@ -1131,7 +1055,11 @@ void start_components_from_config(const struct config *cfg, const struct host *m
                  "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s -kd %s > ../../prime/bin/logs/spines_ext.log &",
                  SPINES_EXT_PORT, me->ip, spines_external_key_dir);
         system(cmd);
+        restarted->spines_ext = 1;
     }
+
+    // give spines time to start
+    sleep(3);
 
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
@@ -1147,16 +1075,18 @@ void start_components_from_config(const struct config *cfg, const struct host *m
                 Alarm(PRINT, "Starting replica (site %u, instance %u)\n", i, r->instance_id);
 
                 snprintf(cmd, sizeof(cmd),
-                         "cd ../../scada_master && ./scada_master %u %u %s &",
-                         r->instance_id, r->instance_id,
-                         log_to_file ? "> ../prime/bin/logs/sm.log" : "");
-                system(cmd);
-
-                snprintf(cmd, sizeof(cmd),
                          "./prime -i %u -g %u %s &",
                          r->instance_id, r->instance_id,
                          log_to_file ? "> logs/prime.log" : "");
                 system(cmd);
+
+                snprintf(cmd, sizeof(cmd),
+                         "cd ../../scada_master && ./scada_master %u %u %s &",
+                         r->instance_id, r->instance_id,
+                         log_to_file ? "> ../prime/bin/logs/sm.log" : "");
+                system(cmd);
+                restarted->prime = 1;
+                restarted->scada_master = 1;
             }
         }
 
@@ -1169,25 +1099,31 @@ void start_components_from_config(const struct config *cfg, const struct host *m
 
                 if (client_host == me && c->type)
                 {
-                    // if (me->runs_spines_external)
-                    // {
-                    //     Alarm(PRINT, "Starting external Spines on %s:%d\n", me->ip, SPINES_EXT_PORT);
-                    //     snprintf(cmd, sizeof(cmd),
-                    //              "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s -kd %s  > ../../prime/bin/logs/spines_ext.log &",
-                    //              SPINES_EXT_PORT, me->ip, spines_external_key_dir);
-                    //     system(cmd);
-                    // }
-
                     if (strcmp(c->type, "JHU") == 0)
+                    {
                         Alarm(PRINT, "Starting JHU HMI client (id %u)\n", c->client_id);
+                        restarted->jhu_hmi = 1;
+                    }
                     else if (strcmp(c->type, "PNNL") == 0)
+                    {
                         Alarm(PRINT, "Starting PNNL HMI client (id %u)\n", c->client_id);
+                        restarted->pnnl_hmi = 1;
+                    }
                     else if (strcmp(c->type, "EMS") == 0)
+                    {
                         Alarm(PRINT, "Starting EMS HMI client (id %u)\n", c->client_id);
+                        restarted->ems_hmi = 1;
+                    }
                     else if (strcmp(c->type, "proxy") == 0)
+                    {
                         Alarm(PRINT, "Starting proxy client (id %u)\n", c->client_id);
+                        restarted->proxy = 1;
+                    }
                     else if (strcmp(c->type, "benchmark") == 0)
+                    {
                         Alarm(PRINT, "Starting benchmark client (id %u)\n", c->client_id);
+                        restarted->benchmark = 1;
+                    }
                     else
                     {
                         Alarm(PRINT, "Unknown client type '%s' for client %u — skipping\n", c->type, c->client_id);
@@ -1207,7 +1143,7 @@ void start_components_from_config(const struct config *cfg, const struct host *m
                         snprintf(cmd, sizeof(cmd), "cd ../../proxy/ && ./proxy %u 1 %s &",
                                  c->client_id, log_to_file ? "> ../prime/bin/logs/proxy.log" : "");
                     else if (strcmp(c->type, "benchmark") == 0)
-                        snprintf(cmd, sizeof(cmd), "cd ../../benchmark/ && ./benchmark %u 1000000 20 %s &",
+                        snprintf(cmd, sizeof(cmd), "cd ../../benchmark/ && ./benchmark %u 1000000 100 %s &",
                                  c->client_id, log_to_file ? "> ../prime/bin/logs/benchmark.log" : "");
 
                     system(cmd);

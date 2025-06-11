@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     if (cfg == NULL)
     {
         printf("Failed to parse config file.\n");
-        return EXIT_FAILURE;
+    return EXIT_FAILURE;
     }
 
     Init_SM_Replicas(cfg);
@@ -135,11 +135,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "Failed to map Spines addresses for replica %d\n", My_ID);
         exit(EXIT_FAILURE);
     }
-
-    printf("[DEBUG] Replica %d Spines IPs: internal = %s, external = %s\n",
-           My_ID,
-           int_ip ? int_ip : "NULL",
-           ext_ip ? ext_ip : "NULL");
 
     printf("INIT\n");
     init();
@@ -821,8 +816,8 @@ void package_and_send_state(signed_message *mess)
     char state[MAX_STATE_SIZE];
 
     sr_specific = (state_request_msg *)(mess + 1);
-    assert(sr_specific->target > 0 && sr_specific->target <= NUM_SM);
-
+    assert(sr_specific->target > 0 && sr_specific->target <= Curr_num_SM);
+    
     /* Fill in the state from the sub_arr data structure */
     state_size = 0;
     slot_ptr = (sm_state *)state;
