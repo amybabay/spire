@@ -122,10 +122,10 @@
 
 /* IP address for the Spines daemon that connects with the PLC/RTU proxy or
  * proxies */
-#define SPINES_RTU_ADDR "192.168.0.105"
+#define SPINES_RTU_ADDR "192.168.54.28"
 
 /* IP address for the Spines daemon that connects with the HMI(s) */
-#define SPINES_HMI_ADDR "192.168.0.106"
+#define SPINES_HMI_ADDR "192.168.54.29"
 
 /************************
  *    Spines defines    *

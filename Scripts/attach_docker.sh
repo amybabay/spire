@@ -1,13 +1,13 @@
 #!/bin/bash
 
-SESSION="goldenrod_exec"
+SESSION="aster_exec"
 
 # Start a new tmux session with the first pane
-tmux new-session -d -s $SESSION -n "goldenrods" "docker exec -it goldenrod1 bash"
+tmux new-session -d -s $SESSION -n "asters" "docker exec -it aster1 bash"
 
-# Split horizontally for goldenrod2–goldenrod6
-for i in {2..6}; do
-    tmux split-window -t $SESSION:0 -h "docker exec -it goldenrod$i bash"
+# Split horizontally for aster2–aster6
+for i in {2..20}; do
+    tmux split-window -t $SESSION:0 -h "docker exec -it aster$i bash"
     tmux select-layout -t $SESSION:0 tiled
 done
 

@@ -376,6 +376,7 @@ int Handle_Verified_Config(const char *buf, size_t len)
     if (!me)
     {
         Alarm(PRINT, "Warning: Host '%s' not found in config. Skipping component startup.\n", Host_Name);
+        kill_all_components();
         free_yaml_config(&cfg);
         return 0;
     }
