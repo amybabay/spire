@@ -33,7 +33,7 @@ static const cyaml_schema_field_t replica_schema_fields[] = {
     CYAML_FIELD_UINT("instance_id", CYAML_FLAG_DEFAULT, struct replica, instance_id),
     CYAML_FIELD_STRING_PTR("host", CYAML_FLAG_POINTER, struct replica, host, 0, CYAML_UNLIMITED),
     CYAML_FIELD_STRING_PTR("spines_internal_daemon", CYAML_FLAG_POINTER, struct replica, spines_internal_daemon, 0, CYAML_UNLIMITED),
-    CYAML_FIELD_STRING_PTR("spines_external_daemon", CYAML_FLAG_POINTER, struct replica, spines_external_daemon, 0, CYAML_UNLIMITED),
+    CYAML_FIELD_STRING_PTR("spines_external_daemon", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct replica, spines_external_daemon, 0, CYAML_UNLIMITED),
     // Future fields (currently required but can be empty initially)
     CYAML_FIELD_STRING_PTR("instance_public_key", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct replica, instance_public_key, 0, CYAML_UNLIMITED),
     CYAML_FIELD_STRING_PTR("encrypted_instance_private_key", CYAML_FLAG_POINTER | CYAML_FLAG_OPTIONAL, struct replica, encrypted_instance_private_key, 0, CYAML_UNLIMITED),
@@ -213,11 +213,15 @@ struct host *find_host_for_replica(struct site *site, const char *host_name)
     return NULL;
 }
 
-struct host *find_host_by_instance_id(const struct config *cfg, int instance_id) {
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+struct host *find_host_by_instance_id(const struct config *cfg, int instance_id)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->replicas_count; j++) {
-            if (site->replicas[j].instance_id == instance_id) {
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
+            if (site->replicas[j].instance_id == instance_id)
+            {
                 return find_host_for_replica(site, site->replicas[j].host);
             }
         }
@@ -225,52 +229,150 @@ struct host *find_host_by_instance_id(const struct config *cfg, int instance_id)
     return NULL;
 }
 
+// /**
+//  * Finds the IP address of the host running a client with the specified client_id.
+//  * If is_hmi is true, it searches for a client of type HMI with the matching client_id.
+//  *
+//  * @param cfg The parsed configuration structure.
+//  * @param client_id The ID of the client to search for.
+//  * @param is_hmi If true, search for a client with type HMI.
+//  * @return The IP address of the corresponding host, or NULL if not found.
+//  */
+// const char *find_host_ip_for_client_id(const struct config *cfg, int client_id, int is_hmi)
+// {
+//     for (unsigned i = 0; i < cfg->sites_count; i++)
+//     {
+//         struct site *site = &cfg->sites[i];
+
+//         if (site->type != CLIENT)
+//             continue;
+
+//         for (unsigned j = 0; j < site->clients_count; j++)
+//         {
+//             struct client *c = &site->clients[j];
+
+//             if (is_hmi) // its an hmi
+//             {
+//                 if (strcmp(c->type, "EMS") == 0 || strcmp(c->type, "PNNL") == 0 || strcmp(c->type, "JHU") == 0 && c->client_id == (unsigned)client_id)
+//                 {
+//                     struct host *h = find_host_for_replica(site, c->host);
+//                     if (h != NULL)
+//                     {
+//                         return h->ip;
+//                     }
+//                 }
+//             }
+//             else // its a proxy or benchmark
+//             {
+//                 if (c->client_id == (unsigned)client_id)
+//                 {
+//                     struct host *h = find_host_for_replica(site, c->host);
+//                     if (h != NULL)
+//                     {
+//                         return h->ip;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     return NULL;
+// }
+
 /**
- * Finds the IP address of the host running a client with the specified client_id.
- * If is_hmi is true, it searches for a client of type HMI with the matching client_id.
+ * Finds the IP address of the host running the external Spines daemon
+ * for a given client_id.
  *
  * @param cfg The parsed configuration structure.
- * @param client_id The ID of the client to search for.
- * @param is_hmi If true, search for a client with type HMI.
- * @return The IP address of the corresponding host, or NULL if not found.
+ * @param client_id The client ID to look up.
+ * @param is_hmi If true, searches only for HMI clients.
+ * @return The IP address of the external Spines daemon, or NULL on failure.
  */
-const char *find_host_ip_for_client_id(const struct config *cfg, int client_id, int is_hmi)
+const char *get_spines_ip_for_client(const struct config *cfg, int client_id, int is_hmi)
 {
+
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
         struct site *site = &cfg->sites[i];
+        //  printf("[DEBUG] Checking site[%u]: name = %s, type = %d\n", i, site->name ? site->name : "NULL", site->type);
 
         if (site->type != CLIENT)
             continue;
 
+        //  printf("[DEBUG] -> Site is a CLIENT site with %u clients\n", site->clients_count);
+
         for (unsigned j = 0; j < site->clients_count; j++)
         {
             struct client *c = &site->clients[j];
+            //  printf("[DEBUG]    Examining client[%u]: id = %d, type = %s\n", j, c->client_id, c->type ? c->type : "NULL");
 
-            if (is_hmi)     // its an hmi
-            {
-                if (strcmp(c->type, "EMS") == 0 || strcmp(c->type, "PNNL") == 0 || strcmp(c->type, "JHU") == 0 && c->client_id == (unsigned)client_id)
-                {
-                    struct host *h = find_host_for_replica(site, c->host);
-                    if (h != NULL)
-                    {
-                        return h->ip;
-                    }
-                }
-            }
-            else            // its a proxy or benchmark
+            if ((is_hmi && c->type &&
+                 (strcmp(c->type, "EMS") == 0 || strcmp(c->type, "PNNL") == 0 || strcmp(c->type, "JHU") == 0)) ||
+                !is_hmi)
             {
                 if (c->client_id == (unsigned)client_id)
                 {
-                    struct host *h = find_host_for_replica(site, c->host);
-                    if (h != NULL)
+                    //  printf("[DEBUG]    -> Matched client_id %d, resolving Spines daemon: %s\n",
+                    // client_id, c->spines_external_daemon ? c->spines_external_daemon : "NULL");
+
+                    struct host *spines_host = find_host_for_replica(site, c->spines_external_daemon);
+
+                    if (spines_host != NULL)
                     {
-                        return h->ip;
+                        //  printf("[DEBUG]       -> Found host: %s, IP: %s\n", spines_host->name, spines_host->ip);
+                        return spines_host->ip;
                     }
                 }
             }
         }
     }
 
+    //  printf("[ERROR] No matching client_id %d found in any CLIENT site.\n", client_id);
     return NULL;
+}
+
+/**
+ * Given a replica instance ID, retrieves the internal and external Spines daemon IPs.
+ * Returns 0 on success, -1 on failure.
+ */
+int get_spines_ips_for_replica(const struct config *cfg, int instance_id,
+                               const char **int_ip_out, const char **ext_ip_out)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
+            struct replica *rep = &site->replicas[j];
+            if (rep->instance_id != instance_id)
+                continue;
+
+            if (rep->spines_internal_daemon)
+            {
+                struct host *int_host = find_host_for_replica(site, rep->spines_internal_daemon);
+                if (!int_host)
+                {
+                    fprintf(stderr, "Internal Spines host not found for replica %d\n", instance_id);
+                    return -1;
+                }
+                *int_ip_out = int_host->ip;
+            }
+            if (rep->spines_external_daemon)
+            {
+                struct host *ext_host = find_host_for_replica(site, rep->spines_external_daemon);
+                if (!ext_host)
+                {
+                    fprintf(stderr, "External Spines host not found for replica %d\n", instance_id);
+                    return -1;
+                }
+                *ext_ip_out = ext_host->ip;
+            }
+            
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "Replica with instance ID %d not found\n", instance_id);
+    return -1;
 }

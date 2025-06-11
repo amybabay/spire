@@ -518,3 +518,4 @@ int is_hmi(unsigned client_id, struct config *cfg)
 
     return 0; // Client not found
 }
+

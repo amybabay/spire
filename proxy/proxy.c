@@ -291,11 +291,11 @@ int main(int argc, char *argv[])
     // sprintf(itrc_thread.spines_ext_addr, "%s", ip_ptr);
     // ip_ptr = strtok(NULL, ":");
     // sscanf(ip_ptr, "%d", &itrc_thread.spines_ext_port);
-    const char *client_ip = find_host_ip_for_client_id(cfg, My_ID, 0);
-    if (!client_ip || strlen(client_ip) == 0)
+    const char *client_ip = get_spines_ip_for_client(cfg, My_ID, 0);
+    if (!client_ip)
     {
-        printf("Could not find host for client ID %d in config.\n", My_ID);
-        return EXIT_FAILURE;
+        printf("Could not find Spines external IP for client_id %d in configuration\n", My_ID);
+        exit(EXIT_FAILURE);
     }
 
     strncpy(itrc_thread.spines_ext_addr, client_ip, sizeof(itrc_thread.spines_ext_addr) - 1);

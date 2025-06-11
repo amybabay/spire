@@ -130,10 +130,10 @@ void itrc_init(int ac, char **av)
     Seq_Num = 1;
     Type = HMI_TYPE;
     My_ID = PNNL;
-    const char *ip = find_host_ip_for_client_id(cfg, My_ID, 1);
+    const char *ip = get_spines_ip_for_client(cfg, My_ID, 0);
     if (!ip)
     {
-        printf("Could not find spines IP for client_id %d in config.\n", My_ID);
+        printf("Could not find Spines external IP for client_id %d in configuration\n", My_ID);
         exit(EXIT_FAILURE);
     }
     // Prime_Client_ID = (NUM_SM + 1) + MAX_EMU_RTU + My_ID;

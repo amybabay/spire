@@ -1655,44 +1655,45 @@ void UTIL_Load_Addresses_From_Config(struct config *cfg)
 		{
 			struct replica *rep = &site->replicas[r];
 
-			// get the internal daemon name
+			// Get the internal daemon name
 			const char *daemon_name = rep->spines_internal_daemon;
-			if (!daemon_name)
-			{
+			if (!daemon_name) {
 				Alarm(EXIT, "Replica %u has no spines_internal_daemon defined\n", rep->instance_id);
 			}
 
-			// find the host matching the daemon name
-			struct host *found_host = NULL;
-			for (unsigned h = 0; h < site->hosts_count; ++h)
-			{
-				if (strcmp(site->hosts[h].name, daemon_name) == 0)
-				{
-					found_host = &site->hosts[h];
+			// Lookup daemon host
+			struct host *daemon_host = NULL;
+			for (unsigned h = 0; h < site->hosts_count; ++h) {
+				if (strcmp(site->hosts[h].name, daemon_name) == 0) {
+					daemon_host = &site->hosts[h];
 					break;
 				}
 			}
-
-			if (!found_host || !found_host->ip)
-			{
-				Alarm(EXIT, "Host '%s' not found or missing IP for replica %u\n", daemon_name, rep->instance_id);
+			if (!daemon_host || !daemon_host->ip) {
+				Alarm(EXIT, "Spines daemon host '%s' not found or missing IP for replica %u\n", daemon_name, rep->instance_id);
 			}
 
-			// in_addr_t net_addr = inet_addr(found_host->ip);
-			// if (net_addr == INADDR_NONE)
-			// {
-			// 	Alarm(EXIT, "Invalid IP address for host '%s': %s\n", found_host->name, found_host->ip);
-			// }
+			// Lookup replica's own host
+			struct host *replica_host = NULL;
+			for (unsigned h = 0; h < site->hosts_count; ++h) {
+				if (strcmp(site->hosts[h].name, rep->host) == 0) {
+					replica_host = &site->hosts[h];
+					break;
+				}
+			}
+			if (!replica_host || !replica_host->ip) {
+				Alarm(EXIT, "Replica host '%s' not found or missing IP for replica %u\n", rep->host, rep->instance_id);
+			}
 
-			// // Convert from network byte order to host byte order so later will work correctly
-			// in_addr_t host_addr = ntohl(net_addr);
+			// Set addresses
+			NET.server_address_spines[rep->instance_id] = ntohl(inet_addr(daemon_host->ip));   // Spines routing IP
+			NET.server_address[rep->instance_id]       = ntohl(inet_addr(replica_host->ip));   // Replica's actual IP
 
-			// NET.server_address_spines[rep->instance_id] = host_addr;
-			// NET.server_address[rep->instance_id] = host_addr;
-			NET.server_address_spines[rep->instance_id] = ntohl( inet_addr(found_host->ip));
-			NET.server_address[rep->instance_id] = ntohl( inet_addr(found_host->ip));
-			Alarm(PRINT, "Spines IP: "IPF", My IP: "IPF" My_Server_ID=%u\n", 
-				IP(NET.server_address_spines[rep->instance_id]), IP(NET.server_address[rep->instance_id]),VAR.My_Server_ID);
+			Alarm(PRINT, "Replica %u | Host IP: "IPF" | Spines Daemon IP: "IPF"\n",
+			      rep->instance_id,
+			      IP(NET.server_address[rep->instance_id]),
+			      IP(NET.server_address_spines[rep->instance_id]));
+
 			replica_index++;
 		}
 	}

@@ -304,7 +304,7 @@ void *ITRC_Client(void *data)
                 mess = (signed_message *)(tcf_specific->payload);
                 if (!ITRC_Valid_Type(mess, TO_CLIENT)) {
                     printf("ITRC_Client: Invalid message type received from CCs, type = %d\n", mess->type);
-                    continue;
+                continue;
                 }
                 ps = (seq_pair *)(mess + 1);
 		//printf("verified scada mess seq=%lu\n",ps->seq_num);
@@ -632,7 +632,7 @@ void *ITRC_Prime_Inject(void *data)
                 //ret = NET_Write(prime_sock, buff, nBytes);
 
                 /* would get blocked here if Prime stops reading */
-                printf("Sending to prime via ipc: %s\n", prime_path);
+                // printf("Sending to prime via ipc: %s\n", prime_path);
                 ret = IPC_Send(prime_sock, buff, nBytes, prime_path);
                 if(ret <= 0) {
                     perror("ITRC_Prime_Inject: Prime Writing error");
@@ -1909,7 +1909,7 @@ int ITRC_Send_TC_Final(int sp_ext_sk, signed_message *mess)
         dest.sin_family = AF_INET;
         dest.sin_port = htons(RTU_BASE_PORT + ben->sender);
         dest.sin_addr.s_addr = inet_addr(SPINES_RTU_ADDR);
-        //printf("\nSENT benchmark response on %s \n",SPINES_RTU_ADDR);
+        // printf("\nSENT benchmark response on %s \n",SPINES_RTU_ADDR);
     }
     else {
         printf("Invalid mess type = %d\n", mess->type);

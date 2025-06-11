@@ -97,6 +97,7 @@ extern int Curr_num_SM;
 extern int Curr_num_CC_Replica;
 extern int Curr_num_CC;
 extern int Curr_num_sites;
+extern int Curr_req_shares;
 
 //extern char *IP_Addr[NUM_SM];
 

@@ -54,7 +54,6 @@
 #include <signal.h>
 #include <assert.h>
 
-
 #include "../common/scada_packets.h"
 #include "../common/openssl_rsa.h"
 #include "../common/net_wrapper.h"
@@ -130,13 +129,17 @@ int main(int argc, char **argv)
 
     Init_SM_Replicas(cfg);
 
-    // Find the host for this replica
-    struct host *me = find_host_by_instance_id(cfg, My_ID);
-    if (!me)
+    const char *int_ip, *ext_ip;
+    if (get_spines_ips_for_replica(cfg, My_ID, &int_ip, &ext_ip) != 0)
     {
-        printf("Could not find host for replica with instance_id %d\n", My_ID);
+        fprintf(stderr, "Failed to map Spines addresses for replica %d\n", My_ID);
         exit(EXIT_FAILURE);
     }
+
+    printf("[DEBUG] Replica %d Spines IPs: internal = %s, external = %s\n",
+           My_ID,
+           int_ip ? int_ip : "NULL",
+           ext_ip ? ext_ip : "NULL");
 
     printf("INIT\n");
     init();
@@ -176,10 +179,11 @@ int main(int argc, char **argv)
     sprintf(itrc_thread.ipc_local, "%s%d", (char *)SM_IPC_ITRC, My_Global_ID);
     sprintf(itrc_thread.ipc_remote, "%s%d", (char *)SM_IPC_MAIN, My_Global_ID);
     // Set internal and external Spines addresses
-    sprintf(itrc_thread.spines_int_addr, "%s", me->ip);
+    sprintf(itrc_thread.spines_int_addr, "%s", int_ip);
     itrc_thread.spines_int_port = SPINES_PORT;
-    if (Is_CC_Replica(My_ID)) {
-        sprintf(itrc_thread.spines_ext_addr, "%s", me->ip);
+    if (Is_CC_Replica(My_ID))
+    {
+        sprintf(itrc_thread.spines_ext_addr, "%s", ext_ip);
         itrc_thread.spines_ext_port = SPINES_EXT_PORT;
     }
 
@@ -340,7 +344,7 @@ void Usage(int argc, char **argv)
     }
 
     sscanf(argv[2], "%d", &My_ID);
-    if (My_ID < 1 || My_ID > NUM_SM)
+    if (My_ID < 1 || My_ID > MAX_NUM_SERVER_SLOTS)
     {
         printf("Invalid My_ID: %d\n", My_ID);
         exit(EXIT_FAILURE);

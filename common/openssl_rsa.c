@@ -67,7 +67,7 @@
 #define RSA_TYPE_CONFIG_MNGR_PUBLIC 5
 #define RSA_TYPE_CONFIG_MNGR_PRIVATE 6
 #define DIGEST_ALGORITHM "sha1"
-#define NUMBER_OF_SERVERS NUM_SM
+// #define NUMBER_OF_SERVERS NUM_SM
 #define NUMBER_OF_CLIENTS (MAX_EMU_RTU + 50)
 
 /* This flag is used to remove crypto for testing -- this feature eliminates
@@ -77,7 +77,7 @@
 /* Global variables */
 RSA *private_rsa; /* My Private Key */
 RSA *public_config_mngr_rsa;
-RSA *public_rsa_by_server[NUMBER_OF_SERVERS + 1];
+RSA *public_rsa_by_server[MAX_NUM_SERVER_SLOTS];
 RSA *public_rsa_by_client[NUMBER_OF_CLIENTS + 1];
 const EVP_MD *message_digest;
 _Thread_local EVP_MD_CTX *mdctx = NULL;
@@ -240,7 +240,7 @@ void OPENSSL_RSA_Generate_Keys(const char *keys_dir)
 	rsa = RSA_new();
 	e = BN_new();
 	BN_set_word(e, 3);
-	for (s = 1; s <= NUMBER_OF_SERVERS; s++)
+	for (s = 1; s < MAX_NUM_SERVER_SLOTS; s++)
 	{
 		if (!RSA_generate_key_ex(rsa, KEY_SIZE, e, NULL))
 		{
@@ -477,7 +477,7 @@ void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const 
 						exit(EXIT_FAILURE);
 					}
 
-					fprintf(stderr, "  Decrypting private key for replica...\n");
+					// fprintf(stderr, "  Decrypting private key for replica...\n");
 					EVP_PKEY *decrypted = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
 					if (!decrypted)
 					{
@@ -857,7 +857,7 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 	}
 	else if (type == RSA_SERVER)
 	{
-		if (number < 1 || number > NUMBER_OF_SERVERS)
+		if (number < 1 || number >= MAX_NUM_SERVER_SLOTS)
 		{
 			return 0;
 		}

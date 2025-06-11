@@ -6,6 +6,7 @@ import re
 testing_config_agent = True
 disabled = False
 
+
 def get_hostname():
     return os.getenv("MY_HOSTNAME", "")
 
@@ -38,12 +39,13 @@ if __name__ == "__main__":
     hostname = get_hostname()
     ip = get_my_ip()
 
-    match = re.match(r"goldenrod(\d)$", hostname)
+    match = re.match(r"(goldenrod|aster)(\d+)$", hostname)
     if not match:
-        print(f"Unrecognized hostname: {hostname}")
+        print(f"Unrecognized hostname format: {hostname}")
         exit(1)
 
-    num = int(match.group(1))
+    prefix = match.group(1)
+    num = int(match.group(2))
 
     if(not disabled):
         # Always run control spines

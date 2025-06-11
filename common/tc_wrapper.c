@@ -470,8 +470,8 @@ void TC_Combine_Shares( byte *signature_dest, byte *digest )
 		tc_public_key[1]);    
     if (ret != 1){
         printf("TC_verify failed error code=%d!!\n",ret);
-    	//printf("Verified Combined Sig: %s\n", BN_bn2hex( combined_signature ));
-    	//TC_PK_Print(tc_public_key[1]);
+    	printf("Verified Combined Sig: %s\n", BN_bn2hex( combined_signature ));
+    	TC_PK_Print(tc_public_key[1]);
 	
 	}
 		//tc_public_key[VAR.My_Site_ID]); //XXX: if want to use for multi-site, will need to change this
@@ -505,34 +505,57 @@ void TC_Combine_Shares( byte *signature_dest, byte *digest )
     BN_free( hash_bn );
 }
 
-int32u TC_Verify_Signature( int32u site, byte *signature, byte *digest ) 
+int32u TC_Verify_Signature(int32u site, byte *signature, byte *digest) 
 {
-    BIGNUM *hash_bn;
-    int32u ret;
-    BIGNUM *sig_bn;
-   
+    BIGNUM *hash_bn = NULL;
+    BIGNUM *sig_bn = NULL;
+    int32u ret = 0;
+
 #if REMOVE_CRYPTO
     return 1;
 #endif
 
-    hash_bn = BN_bin2bn( digest, DIGEST_SIZE, NULL );
-    sig_bn = BN_bin2bn( signature, SIGNATURE_SIZE, NULL );
-    //printf("Signature: %s\n",BN_bn2hex( signature ));
-    //printf("Sig_bn: %s\n",BN_bn2hex( (TC_SIG)sig_bn ));
-    if ( site == 0 || site > TC_NUM_SITES ) {
-	ret = 0;
-    } else {
-	ret = TC_verify(hash_bn, sig_bn, tc_public_key[site]);
-	//printf("TC_Verify return code %d\n",ret);
-	//TC_PK_Print(tc_public_key[1]);
+    // printf("[DEBUG] --- Entered TC_Verify_Signature ---\n");
+    // printf("[DEBUG] Site = %u\n", site);
+
+    // printf("[DEBUG] Digest (first 8 bytes): ");
+    // for (int i = 0; i < 8; i++) printf("%02x ", digest[i]);
+    // printf("\n");
+
+    // printf("[DEBUG] Signature (first 8 bytes): ");
+    // for (int i = 0; i < 8; i++) printf("%02x ", signature[i]);
+    // printf("\n");
+
+    // Convert to BIGNUM
+    hash_bn = BN_bin2bn(digest, DIGEST_SIZE, NULL);
+    sig_bn = BN_bin2bn(signature, SIGNATURE_SIZE, NULL);
+
+    if (hash_bn == NULL || sig_bn == NULL) {
+        printf("[ERROR] BN_bin2bn failed: hash_bn=%p, sig_bn=%p\n", (void *)hash_bn, (void *)sig_bn);
+        goto cleanup;
     }
 
+    // printf("[DEBUG] hash_bn: %s\n", BN_bn2hex(hash_bn));
+    // printf("[DEBUG] sig_bn:  %s\n", BN_bn2hex(sig_bn));
 
-    BN_free( sig_bn );
-    BN_free( hash_bn );
+    if (site == 0 || site > TC_NUM_SITES || tc_public_key[site] == NULL) {
+        printf("[ERROR] Invalid site index (%u) or missing public key\n", site);
+        goto cleanup;
+    }
+
+    // printf("[DEBUG] Verifying with public key for site %u:\n", site);
+    // TC_PK_Print(tc_public_key[site]); // Make sure this actually prints something meaningful
+
+    ret = TC_verify(hash_bn, sig_bn, tc_public_key[site]);
+    // printf("[DEBUG] TC_verify() return value: %u\n", ret);
+
+cleanup:
+    if (sig_bn) BN_free(sig_bn);
+    if (hash_bn) BN_free(hash_bn);
 
     return ret;
 }
+
 
 int TC_Check_Share( byte* digest, int32u sender_id )
 {
