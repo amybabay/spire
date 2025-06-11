@@ -41,13 +41,6 @@ int main(int argc, char *argv[])
 
     Usage(argc, argv, &input_path, &output_path);
 
-    struct config *cfg = load_and_process_config(input_path, simulate_tpm);
-    if (!cfg)
-    {
-        fprintf(stderr, "Failed to load/process config\n");
-        return EXIT_FAILURE;
-    }
-
     EVP_PKEY *cm_priv = NULL, *cm_pub = NULL;
     char *serialized_config = NULL;
     Signature sig = {0};
@@ -55,7 +48,7 @@ int main(int argc, char *argv[])
     int status = EXIT_SUCCESS;
 
     // Load and process YAML config
-    cfg = load_and_process_config(input_path, simulate_tpm);
+    struct config *cfg = load_and_process_config(input_path, simulate_tpm);
     if (!cfg)
     {
         fprintf(stderr, "Failed to load or process config\n");

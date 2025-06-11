@@ -133,7 +133,7 @@ void itrc_init(int ac, char **av)
     Seq_Num = 1;
     Type = HMI_TYPE;
     My_ID = PNNL;
-    const char *ip = get_spines_ip_for_client(cfg, My_ID, 0);
+    const char *ip = get_spines_ip_for_client(cfg, My_ID, 1);
     if (!ip)
     {
         printf("Could not find Spines external IP for client_id %d in configuration\n", My_ID);

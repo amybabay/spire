@@ -57,22 +57,19 @@ char *read_file_as_string(const char *filepath)
  * @param rej_servers  Number of servers allowed to reject messages (k).
  * @param num_sites    Number of sites to generate keys for.
  */
-void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers, int num_sites)
+void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers)
 {
     int n = 3 * faults + 2 * rej_servers + 1;
     int k = req_shares;
     int keysize = 1024;
 
-    for (int site_id = 1; site_id <= num_sites; site_id++)
-    {
-        TC_DEALER *dealer_sm = TC_generate(keysize / 2, n, k, 17);
-        TC_write_shares(dealer_sm, "tc_keys/sm", site_id);
-        TC_DEALER_free(dealer_sm);
+    TC_DEALER *dealer_sm = TC_generate(keysize / 2, n, k, 17);
+    TC_write_shares(dealer_sm, "tc_keys/sm", 1);
+    TC_DEALER_free(dealer_sm);
 
-        TC_DEALER *dealer_prime = TC_generate(keysize / 2, n, k, 17);
-        TC_write_shares(dealer_prime, "tc_keys/prime", site_id);
-        TC_DEALER_free(dealer_prime);
-    }
+    TC_DEALER *dealer_prime = TC_generate(keysize / 2, n, k, 17);
+    TC_write_shares(dealer_prime, "tc_keys/prime", 1);
+    TC_DEALER_free(dealer_prime);
 }
 
 /**
@@ -200,7 +197,7 @@ void generate_keys_for_host(struct host *host)
  *
  * @note Exits early and logs errors if key generation, public key loading, or share file reading fails.
  */
-void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index, unsigned replica_index_within_site)
+void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index)
 {
     if (!host->permanent_public_key)
     {
@@ -242,10 +239,10 @@ void generate_keys_for_replica(struct replica *replica, struct host *host, unsig
     // Encrypt Threshold Shares
 
     char prime_share_path[512];
-    snprintf(prime_share_path, sizeof(prime_share_path), PRIME_TC_DIR "share%d_%u.pem", replica_index_within_site, site_index + 1);
+    snprintf(prime_share_path, sizeof(prime_share_path), PRIME_TC_DIR "share%d_1.pem", replica->instance_id - 1);
 
     char sm_share_path[512];
-    snprintf(sm_share_path, sizeof(sm_share_path), SM_TC_DIR "share%d_%u.pem", replica_index_within_site, site_index + 1);
+    snprintf(sm_share_path, sizeof(sm_share_path), SM_TC_DIR "share%d_1.pem", replica->instance_id - 1);
 
     char *prime_plain = read_file_as_string(prime_share_path);
     char *sm_plain = read_file_as_string(sm_share_path);
@@ -387,7 +384,7 @@ void generate_keys(struct config *cfg)
 
             if (replica_host)
             {
-                generate_keys_for_replica(replica, replica_host, i, j);
+                generate_keys_for_replica(replica, replica_host, i);
             }
             else
             {
@@ -463,7 +460,7 @@ struct config *load_and_process_config(const char *input_yaml, int simulate_tpm)
     int faults = cfg->tolerated_byzantine_faults;
     int rej_servers = cfg->tolerated_unavailable_replicas;
     int req_shares = faults + 1;
-    generate_all_site_tc_keys(req_shares, faults, rej_servers, cfg->sites_count);
+    generate_all_site_tc_keys(req_shares, faults, rej_servers);
 
     load_threshold_pubkeys(cfg);
     generate_keys(cfg);

@@ -376,3 +376,6 @@ int get_spines_ips_for_replica(const struct config *cfg, int instance_id,
     fprintf(stderr, "Replica with instance ID %d not found\n", instance_id);
     return -1;
 }
+
+//get_client_spines_ip
+//get_replica_spines_ips
