@@ -24,6 +24,7 @@ void ensure_directory(const char *path)
         }
     }
 }
+
 void generate_simulated_tpm_key_for_host(struct host *host)
 {
     char private_key_filepath[512];
@@ -32,54 +33,60 @@ void generate_simulated_tpm_key_for_host(struct host *host)
 
     ensure_directory(TPM_KEY_DIR);
 
-    // Update permanent_key_location field (used later by config_manager)
+    // Set permanent key path
     host->permanent_key_location = strdup(private_key_filepath);
 
-    // Generate RSA key for TPM simulation
-    EVP_PKEY *tpm_key = generate_rsa_key(3072);
-    if (!tpm_key)
-    {
-        fprintf(stderr, "Error: Failed to generate simulated TPM key for host %s\n", host->name);
-        return;
-    }
+    EVP_PKEY *tpm_key = NULL;
 
-    // Extract private key in PEM format
-    char *tpm_private = get_private_key(tpm_key);
-    if (!tpm_private)
-    {
-        fprintf(stderr, "Error: Failed to extract TPM private key for host %s\n", host->name);
-        free_rsa_key(tpm_key);
-        return;
-    }
+    // Check if the private key file exists
+    FILE *fp = fopen(private_key_filepath, "r");
+    if (fp) {
+        // Load existing private key
+        tpm_key = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+        fclose(fp);
 
-    // Write private key to disk
-    if (write_key_to_file(private_key_filepath, tpm_private) != 0)
-    {
-        fprintf(stderr, "Error: Failed to write TPM key to %s\n", private_key_filepath);
+        if (!tpm_key) {
+            fprintf(stderr, "Error: Failed to load existing TPM key for host %s\n", host->name);
+            return;
+        }
+    } else {
+        // Generate new key
+        tpm_key = generate_rsa_key(3072);
+        if (!tpm_key) {
+            fprintf(stderr, "Error: Failed to generate simulated TPM key for host %s\n", host->name);
+            return;
+        }
+
+        // Extract and write private key
+        char *tpm_private = get_private_key(tpm_key);
+        if (!tpm_private) {
+            fprintf(stderr, "Error: Failed to extract TPM private key for host %s\n", host->name);
+            free_rsa_key(tpm_key);
+            return;
+        }
+
+        if (write_key_to_file(private_key_filepath, tpm_private) != 0) {
+            fprintf(stderr, "Error: Failed to write TPM key to %s\n", private_key_filepath);
+            free(tpm_private);
+            free_rsa_key(tpm_key);
+            return;
+        }
+
         free(tpm_private);
-        free_rsa_key(tpm_key);
-        return;
     }
 
-    // Extract public key and store in memory
+    // Extract public key
     char *tpm_public = get_public_key(tpm_key);
-    if (!tpm_public)
-    {
+    if (!tpm_public) {
         fprintf(stderr, "Error: Failed to extract TPM public key for host %s\n", host->name);
-        free(tpm_private);
         free_rsa_key(tpm_key);
         return;
     }
 
     host->permanent_public_key = tpm_public;
-
-    // Clean up
-    free(tpm_private);
     free_rsa_key(tpm_key);
-
-    // Debug print
-    printf("[DEBUG] TPM key generated for host %s at %s\n", host->name, host->permanent_key_location);
 }
+
 
 /**
  * Performs the first pass of config generation:

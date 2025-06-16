@@ -272,3 +272,81 @@ services:
       - NET_ADMIN
     tty: true
     stdin_open: true
+
+  goldenrod1:
+    image: spire-img
+    container_name: goldenrod1
+    environment:
+      - MY_HOSTNAME=goldenrod1
+    networks:
+      spire-net:
+        ipv4_address: 192.168.54.30
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  goldenrod2:
+    image: spire-img
+    container_name: goldenrod2
+    environment:
+      - MY_HOSTNAME=goldenrod2
+    networks:
+      spire-net:
+        ipv4_address: 192.168.54.31
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  goldenrod3:
+    image: spire-img
+    container_name: goldenrod3
+    environment:
+      - MY_HOSTNAME=goldenrod3
+    networks:
+      spire-net:
+        ipv4_address: 192.168.54.32
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true    
+
+  goldenrod4:
+    image: spire-img
+    container_name: goldenrod4
+    environment:
+      - MY_HOSTNAME=goldenrod4
+    networks:
+      spire-net:
+        ipv4_address: 192.168.54.33
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  goldenrod5:
+    image: spire-img
+    container_name: goldenrod5
+    environment:
+      - MY_HOSTNAME=goldenrod5
+    networks:
+      spire-net:
+        ipv4_address: 192.168.54.34
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true    
+
+  goldenrod6:
+    image: spire-img
+    container_name: goldenrod6
+    environment:
+      - MY_HOSTNAME=goldenrod6
+    networks:
+      spire-net:
+        ipv4_address: 192.168.54.35
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true    

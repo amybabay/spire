@@ -1,12 +1,7 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <num_hosts>"
-    exit 1
-fi
-
-NUM_HOSTS=$1
-SESSION="tail_prime"
+NUM_HOSTS=18
+SESSION="asters_tail_prime"
 
 # Start new tmux session
 tmux new-session -d -s $SESSION

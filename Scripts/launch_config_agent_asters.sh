@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SESSION="config_agents"
+SESSION="aster_config_agents"
 
 # Start new tmux session
 tmux new-session -d -s $SESSION

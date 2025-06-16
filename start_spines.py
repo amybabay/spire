@@ -31,13 +31,15 @@ if __name__ == "__main__":
     hostname = get_hostname()
     ip = get_my_ip()
 
-    match = re.match(r"aster(\d+)$", hostname)
+    match = re.match(r"(aster|goldenrod)(\d+)$", hostname)
     if not match:
         print(f"Unrecognized hostname format: {hostname}")
         exit(1)
 
-    num = int(match.group(1))
-
+    prefix = match.group(1)  # "aster" or "goldenrod"
+    num = int(match.group(2))
+    print(f"[INFO] Matched prefix: {prefix}, number: {num}")
+    
     start_spines("spines_ctrl.conf", 8200, ip)
 
     if num == 19:
