@@ -251,10 +251,9 @@ int verify_buffer(const unsigned char *data, size_t data_len,
         result = 0;
     }
 
-    if (result == 0)
-        printf("Signature is valid.\n");
-    else
+    if (result != 0)
         printf("Signature is INVALID.\n");
+        
 
     EVP_MD_CTX_free(md_ctx);
     return result;

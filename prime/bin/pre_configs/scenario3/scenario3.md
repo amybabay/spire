@@ -12,3 +12,27 @@
 3. After the hurricane passes, both original control centers are operational.
 
 4. System reconfigured: returned to original configuration with CC1, CC2, and DC.
+
+# Title Card
+
+Scenario 3: Proactive Reconfiguration for Disaster Preparedness
+
+This scenario shows how the system can proactively reconfigure in anticipation of a threat to ensure continued availability.
+
+Initial configuration:
+
+    2 Control Centers (CC1 and CC2)
+
+    1 Data Center (DC)
+
+    Each site runs 6 replicas
+
+In anticipation of a natural disaster:
+
+    CC2 is preemptively replaced by a Mobile Control Center (MCC) to avoid service disruption
+
+After the threat passes:
+
+    Both original control centers (CC1 and CC2) are confirmed operational
+
+    The system reverts to its original 3-site configuration

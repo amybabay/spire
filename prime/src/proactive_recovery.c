@@ -655,6 +655,16 @@ void PR_Process_Incarnation_Ack(signed_message *mess)
 
     assert(DATA.PR.recv_incarnation_ack[sender] == NULL);
     inc_ref_cnt(mess);
+    
+#if 1
+    incarnation_ack_message *ack_specific = (incarnation_ack_message *)(mess + 1);
+    char digest_str[2 * DIGEST_SIZE + 1];
+    for (int j = 0; j < DIGEST_SIZE; j++)
+        sprintf(&digest_str[2 * j], "%02x", ack_specific->digest[j]);
+
+    Alarm(PRINT, "PR_Process_Incarnation_Ack: setting recv_incarnation_ack for id: %u, digest: %s\n", sender, digest_str);
+#endif
+
     DATA.PR.recv_incarnation_ack[sender] = mess;
     DATA.PR.incarnation_ack_count++;
 

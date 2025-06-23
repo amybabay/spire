@@ -811,7 +811,7 @@ void UTIL_Send_To_Server(signed_message *mess, int32u server_id)
 				  MT_Digests_(mess->mt_num) * DIGEST_SIZE);
 		Alarm(EXIT, "UTIL_Send_To_Server: socket error\n");
 	}
-
+	
 #else
 	if (NET.program_type == NET_SERVER_PROGRAM_TYPE)
 	{
@@ -871,6 +871,7 @@ void UTIL_Send_To_Server(signed_message *mess, int32u server_id)
 		}
 	}
 #endif
+Alarm(PRINT, "Sending mess type %s of global configuration number %u of length %d from client: %d\n",  UTIL_Type_To_String(mess->type), mess->global_configuration_number,ret,mess->machine_id);
 }
 
 /* Broadcast a message to all servers except me.  Use multicast is
@@ -1678,6 +1679,7 @@ void UTIL_Load_Addresses_From_Config(struct config *cfg)
 			for (unsigned h = 0; h < site->hosts_count; ++h) {
 				if (strcmp(site->hosts[h].name, rep->host) == 0) {
 					replica_host = &site->hosts[h];
+					Alarm(DEBUG, "UTIL_Load_Addresses_From_Config: my host: %s\n", replica_host->name);
 					break;
 				}
 			}

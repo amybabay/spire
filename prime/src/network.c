@@ -813,7 +813,7 @@ void Net_Srv_Recv(channel sk, int source, void *dummy_p)
     return;
   }
 
-   Alarm(DEBUG,"MS2022: Received bytes= %d\n",received_bytes); 
+   Alarm(PRINT,"MS2022: Received bytes= %d\n",received_bytes); 
   /* Process the packet */
   mess = (signed_message*)srv_recv_scat.elements[0].buf;
     Alarm(DEBUG, "MS2022: Network: Got mess type  %s\n", UTIL_Type_To_String(mess->type));
@@ -830,7 +830,7 @@ void Net_Srv_Recv(channel sk, int source, void *dummy_p)
     /* if(NET.client_sd[mess->machine_id] == 0)
       NET.client_sd[mess->machine_id] = sk; */
   }
-
+  
   /* Function used to first decide whether or not we should even look at this message 
    * based on the state we are in (STARTUP, RESET, RECOVERY, NORMAL) */
   /*MS2022: DoS / Replay attack handling */
@@ -841,12 +841,14 @@ void Net_Srv_Recv(channel sk, int source, void *dummy_p)
     return;
   }
 
+  Alarm(PRINT, "Got mess type %s of global configuration number %u from client: %d\n",  UTIL_Type_To_String(mess->type), mess->global_configuration_number,mess->machine_id);
   /* 1) Validate the Packet.  If the message does not validate, drop it. */
   if (!VAL_Validate_Message(mess, received_bytes)) {
     Alarm(PRINT, "VALIDATE FAILED for type %s from %u\n", 
             UTIL_Type_To_String(mess->type), mess->machine_id);
     return;
   }
+
 
   /* NEW - Process message both applies and (potentially) dispatches
    *    new messages as a result */

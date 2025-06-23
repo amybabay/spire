@@ -1767,16 +1767,56 @@ signed_message *PR_Construct_Incarnation_Cert()
     ic->monotonic_counter = 1;  // PRTODO: update with TPM counter
 
     /* Copy in the new_incarnation message */
+    //jack added:
+    signed_message *ni_msg = DATA.PR.new_incarnation[VAR.My_Server_ID];
+    // end jack added
+
     size = UTIL_Message_Size(DATA.PR.new_incarnation[VAR.My_Server_ID]);
     memcpy(ptr, DATA.PR.new_incarnation[VAR.My_Server_ID], size);
     ic->len += size;
     ptr += size;
 
+    //jack added:
+    byte ni_digest[DIGEST_SIZE];
+    OPENSSL_RSA_Make_Digest((byte *)ni_msg, size, ni_digest);
+
+    Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest of NEW_INCARNATION:\n");
+    char digest_str[2 * DIGEST_SIZE + 1];
+    for (i = 0; i < DIGEST_SIZE; i++) {
+        sprintf(&digest_str[2 * i], "%02x", ni_digest[i]);
+    }
+    digest_str[2 * DIGEST_SIZE] = '\0'; 
+
+    Alarm(PRINT, "  digest: %s\n", digest_str);
+    //end jack added
     count = 0;
     for (i = 1; i <=  VAR.Num_Servers && count < 2*VAR.F + VAR.K + 1; i++) {
 
         if (DATA.PR.recv_incarnation_ack[i] == NULL) 
             continue;
+
+#if 1 //jack added
+
+            size = UTIL_Message_Size(DATA.PR.recv_incarnation_ack[i]);
+            incarnation_ack_message *ack_specific = (incarnation_ack_message *)(DATA.PR.recv_incarnation_ack[i] + 1);
+
+            char digest_str[2 * DIGEST_SIZE + 1];
+
+            for (int j = 0; j < DIGEST_SIZE; j++)
+                sprintf(&digest_str[2 * j], "%02x", ack_specific->digest[j]);
+            Alarm(PRINT, "  ack_digest: %s\n", digest_str);
+
+            for (int j = 0; j < DIGEST_SIZE; j++)
+                sprintf(&digest_str[2 * j], "%02x", ni_digest[j]);
+            Alarm(PRINT, "  ni_digest : %s\n", digest_str);
+
+            if (!OPENSSL_RSA_Digests_Equal(ack_specific->digest, ni_digest)) {
+                Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest mismatch for ack from server %u\n", i);
+            } else {
+                Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest match for ack from server %u\n", i);
+            }
+
+#endif //end jack added
 
         size = UTIL_Message_Size(DATA.PR.recv_incarnation_ack[i]);
         memcpy(ptr, DATA.PR.recv_incarnation_ack[i], size);
@@ -2204,7 +2244,7 @@ signed_message *PR_Construct_Reset_Certificate()
     rc->type              = RESET_CERT;
     rc->len               = sizeof(reset_certificate_message);
     rc->monotonic_counter = 1; // PRTODO: fix with TPM
-
+    
     rc_specific->view = DATA.View;
 
     offset = (char *)(rc_specific + 1);

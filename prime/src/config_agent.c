@@ -95,7 +95,7 @@ void Cleanup_Fragments(void);
 static struct host *find_host_by_name(const struct config *cfg, const char *name);
 void start_components_from_config(const struct config *cfg, const struct host *me, ComponentFlags *restarted);
 int kill_all_components(ComponentFlags *flags);
-
+void pad_killed_logs(const ComponentFlags *killed, const ComponentFlags *restarted);
 void generate_spines_topologies(const struct config *cfg);
 
 int main(int argc, char **argv)
@@ -139,7 +139,7 @@ static void Init_Network(void)
         Alarm(EXIT, "Config_Agent: Failed to join multicast group\n");
     }
 
-    Alarm(PRINT, "Config_Agent: Spines multicast network ready\n");
+    Alarm(PRINT, "Config_Agent: Ready!\n");
 }
 
 static void Handle_Conf_Message(int s, int source, void *dummy)
@@ -390,7 +390,8 @@ int Handle_Verified_Config(const char *buf, size_t len)
     struct host *me = find_host_by_name(cfg, Host_Name);
     if (!me)
     {
-        Alarm(PRINT, "Warning: Host '%s' not found in config. Skipping component startup.\n", Host_Name);
+        Alarm(PRINT, "Host '%s' not found in config. Skipping component startup.\n", Host_Name);
+        pad_killed_logs(&killed, &restarted);
         free_yaml_config(&cfg);
         return 0;
     }
@@ -442,8 +443,8 @@ int Handle_Verified_Config(const char *buf, size_t len)
     }
 
     start_components_from_config(cfg, me, &restarted);
-
     pad_killed_logs(&killed, &restarted);
+
     free_yaml_config(&cfg);
     return 0;
 }
@@ -861,38 +862,43 @@ int is_target_process(const char *name)
     return 0;
 }
 
-void pad_killed_logs(const ComponentFlags *killed, const ComponentFlags *restarted)
+void pad_log(const char *path, const char *name)
 {
-    if (killed->prime && !restarted->prime) {
-        system("printf '\\n%.0s' {1..50} >> logs/prime.log");
-        system("echo \"[KILLED BY CONFIG AGENT] prime\" >> logs/prime.log");
+    if (access(path, F_OK) != 0)
+        return; // file does not exist, skip
+
+    FILE *fp = fopen(path, "a");
+    if (!fp)
+    {
+        return; // could not open for append, skip
     }
-    if (killed->scada_master && !restarted->scada_master) {
-        system("printf '\\n%.0s' {1..50} >> logs/sm.log");
-        system("echo \"[KILLED BY CONFIG AGENT] scada_master\" >> logs/sm.log");
-    }
-    if (killed->jhu_hmi && !restarted->jhu_hmi) {
-        system("printf '\\n%.0s' {1..50} >> logs/jhu_hmi.log");
-        system("echo \"[KILLED BY CONFIG AGENT] jhu_hmi\" >> logs/jhu_hmi.log");
-    }
-    if (killed->pnnl_hmi && !restarted->pnnl_hmi) {
-        system("printf '\\n%.0s' {1..50} >> logs/pnnl_hmi.log");
-        system("echo \"[KILLED BY CONFIG AGENT] pnnl_hmi\" >> logs/pnnl_hmi.log");
-    }
-    if (killed->ems_hmi && !restarted->ems_hmi) {
-        system("printf '\\n%.0s' {1..50} >> logs/ems_hmi.log");
-        system("echo \"[KILLED BY CONFIG AGENT] ems_hmi\" >> logs/ems_hmi.log");
-    }
-    if (killed->proxy && !restarted->proxy) {
-        system("printf '\\n%.0s' {1..50} >> prime/bin/logs/proxy.log");
-        system("echo \"[KILLED BY CONFIG AGENT] proxy\" >> logs/proxy.log");
-    }
-    if (killed->benchmark && !restarted->benchmark) {
-        system("printf '\\n%.0s' {1..50} >> logs/benchmark.log");
-        system("echo \"[KILLED BY CONFIG AGENT] benchmark\" >> logs/benchmark.log");
-    }
+
+    setvbuf(fp, NULL, _IONBF, 0);
+
+    for (int i = 0; i < 50; i++)
+        fputc('\n', fp);
+
+    fprintf(fp, "[KILLED BY CONFIG AGENT] %s\n", name);
+    fclose(fp);
 }
 
+void pad_killed_logs(const ComponentFlags *killed, const ComponentFlags *restarted)
+{
+    if (killed->prime && !restarted->prime)
+        pad_log("/app/spire/prime/bin/logs/prime.log", "prime");
+    if (killed->scada_master && !restarted->scada_master)
+        pad_log("/app/spire/prime/bin/logs/sm.log", "scada_master");
+    if (killed->jhu_hmi && !restarted->jhu_hmi)
+        pad_log("/app/spire/prime/bin/logs/jhu_hmi.log", "jhu_hmi");
+    if (killed->pnnl_hmi && !restarted->pnnl_hmi)
+        pad_log("/app/spire/prime/bin/logs/pnnl_hmi.log", "pnnl_hmi");
+    if (killed->ems_hmi && !restarted->ems_hmi)
+        pad_log("/app/spire/prime/bin/logs/ems_hmi.log", "ems_hmi");
+    if (killed->proxy && !restarted->proxy)
+        pad_log("/app/spire/prime/bin/logs/proxy.log", "proxy");
+    if (killed->benchmark && !restarted->benchmark)
+        pad_log("/app/spire/prime/bin/logs/benchmark.log", "benchmark");
+}
 
 /**
  * Scans all running processes and forcibly terminates known system components.
@@ -969,7 +975,7 @@ int kill_all_components(ComponentFlags *flags)
                                     cmdline[i] = ' ';
                             }
 
-                            if (strstr(cmdline, "spines_ctrl.conf") != NULL)
+                            if (strstr(cmdline, "spines_ctrl") != NULL)
                             {
                                 skip = 1;
                             }
@@ -979,7 +985,7 @@ int kill_all_components(ComponentFlags *flags)
 
                 if (skip)
                 {
-                    printf("Skipping %s (PID %d) — spines_ctrl.conf detected\n", comm, pid);
+                    // printf("Skipping %s (PID %d) — spines_ctrl.conf detected\n", comm, pid);
                     continue;
                 }
 
@@ -1034,7 +1040,7 @@ void remove_spines_tmp_files()
 
 void start_components_from_config(const struct config *cfg, const struct host *me, ComponentFlags *restarted)
 {
-    remove_spines_tmp_files();
+    // remove_spines_tmp_files();
 
     char cmd[1024];
 
@@ -1042,7 +1048,7 @@ void start_components_from_config(const struct config *cfg, const struct host *m
     {
         Alarm(PRINT, "Starting internal Spines on %s:%d\n", me->ip, SPINES_PORT);
         snprintf(cmd, sizeof(cmd),
-                 "cd ../../spines/daemon && ./spines -p %d -c spines_int.conf -I %s -kd %s > ../../prime/bin/logs/spines_int.log &",
+                 "cd ../../spines/daemon && ./spines -p %d -c spines_int.conf -I %s -kd %s > ../../prime/bin/logs/spines_int.log 2>/dev/null &",
                  SPINES_PORT, me->ip, spines_internal_key_dir);
         system(cmd);
         restarted->spines_int = 1;
@@ -1052,15 +1058,28 @@ void start_components_from_config(const struct config *cfg, const struct host *m
     {
         Alarm(PRINT, "Starting external Spines on %s:%d\n", me->ip, SPINES_EXT_PORT);
         snprintf(cmd, sizeof(cmd),
-                 "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s -kd %s > ../../prime/bin/logs/spines_ext.log &",
+                 "cd ../../spines/daemon && ./spines -p %d -c spines_ext.conf -I %s -kd %s > ../../prime/bin/logs/spines_ext.log 2>/dev/null &",
                  SPINES_EXT_PORT, me->ip, spines_external_key_dir);
         system(cmd);
         restarted->spines_ext = 1;
     }
 
     // give spines time to start
-    sleep(3);
+    if (restarted->spines_ext || restarted->spines_int)
+    {
+        for (unsigned i = 0; i < cfg->sites_count; i++)
+        {
+            struct site *site = &cfg->sites[i];
+            for (unsigned j = 0; j < site->replicas_count; j++)
+            {
+                struct replica *r = &site->replicas[j];
+                struct host *rep_host = find_host_for_replica(site, r->host);
 
+                if (rep_host == me)
+                    sleep(3 + (r->instance_id / 10));
+            }
+        }
+    }
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
         struct site *site = &cfg->sites[i];
@@ -1072,18 +1091,17 @@ void start_components_from_config(const struct config *cfg, const struct host *m
 
             if (rep_host == me)
             {
-                Alarm(PRINT, "Starting replica (site %u, instance %u)\n", i, r->instance_id);
-
                 snprintf(cmd, sizeof(cmd),
                          "./prime -i %u -g %u %s &",
                          r->instance_id, r->instance_id,
-                         log_to_file ? "> logs/prime.log" : "");
+                         log_to_file ? "> logs/prime.log 2>/dev/null" : "2>/dev/null");
                 system(cmd);
-
+                Alarm(PRINT, "Starting replica (site %u, instance %u)\n", i, r->instance_id);
                 snprintf(cmd, sizeof(cmd),
                          "cd ../../scada_master && ./scada_master %u %u %s &",
                          r->instance_id, r->instance_id,
                          log_to_file ? "> ../prime/bin/logs/sm.log" : "");
+                //  log_to_file ? "> ../prime/bin/logs/sm.log 2>/dev/null" : "2>/dev/null");
                 system(cmd);
                 restarted->prime = 1;
                 restarted->scada_master = 1;
@@ -1132,19 +1150,19 @@ void start_components_from_config(const struct config *cfg, const struct host *m
 
                     if (strcmp(c->type, "JHU") == 0)
                         snprintf(cmd, sizeof(cmd), "cd ../../hmis/jhu_hmi/ && ./jhu_hmi %s &",
-                                 log_to_file ? "> ../../prime/bin/logs/jhu_hmi.log" : "");
+                                 log_to_file ? "> ../../prime/bin/logs/jhu_hmi.log 2>/dev/null" : "2>/dev/null");
                     else if (strcmp(c->type, "PNNL") == 0)
                         snprintf(cmd, sizeof(cmd), "cd ../../hmis/pnnl_hmi/ && ./pnnl_hmi %s &",
-                                 log_to_file ? "> ../../prime/bin/logs/pnnl_hmi.log" : "");
+                                 log_to_file ? "> ../../prime/bin/logs/pnnl_hmi.log 2>/dev/null" : "2>/dev/null");
                     else if (strcmp(c->type, "EMS") == 0)
                         snprintf(cmd, sizeof(cmd), "cd ../../hmis/ems_hmi/ && ./ems_hmi %s &",
-                                 log_to_file ? "> ../../prime/bin/logs/ems_hmi.log" : "");
+                                 log_to_file ? "> ../../prime/bin/logs/ems_hmi.log 2>/dev/null" : "2>/dev/null");
                     else if (strcmp(c->type, "proxy") == 0)
                         snprintf(cmd, sizeof(cmd), "cd ../../proxy/ && ./proxy %u 1 %s &",
-                                 c->client_id, log_to_file ? "> ../prime/bin/logs/proxy.log" : "");
+                                 c->client_id, log_to_file ? "> ../prime/bin/logs/proxy.log 2>/dev/null" : "2>/dev/null");
                     else if (strcmp(c->type, "benchmark") == 0)
                         snprintf(cmd, sizeof(cmd), "cd ../../benchmark/ && ./benchmark %u 1000000 100 %s &",
-                                 c->client_id, log_to_file ? "> ../prime/bin/logs/benchmark.log" : "");
+                                 c->client_id, log_to_file ? "> ../prime/bin/logs/benchmark.log 2>/dev/null" : "2>/dev/null");
 
                     system(cmd);
                 }

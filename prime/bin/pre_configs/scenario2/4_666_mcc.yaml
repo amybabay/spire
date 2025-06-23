@@ -203,7 +203,7 @@ sites:
   type: CONTROL_CENTER
   hosts:
   - name: goldenrod1
-    ip: 192.168.101.101
+    ip: 192.168.54.30
     permanent_key_location: tpm_keys/goldenrod1_tpm_private.pem
     permanent_public_key: '-----BEGIN PUBLIC KEY-----
 
@@ -231,7 +231,7 @@ sites:
     runs_spines_internal: 1
     runs_spines_external: 1
   - name: goldenrod2
-    ip: 192.168.101.102
+    ip: 192.168.54.31
     permanent_key_location: tpm_keys/goldenrod2_tpm_private.pem
     permanent_public_key: '-----BEGIN PUBLIC KEY-----
 
@@ -259,7 +259,7 @@ sites:
     runs_spines_internal: 0
     runs_spines_external: 0
   - name: goldenrod3
-    ip: 192.168.101.103
+    ip: 192.168.54.32
     permanent_key_location: tpm_keys/goldenrod3_tpm_private.pem
     permanent_public_key: '-----BEGIN PUBLIC KEY-----
 
@@ -287,7 +287,7 @@ sites:
     runs_spines_internal: 0
     runs_spines_external: 0
   - name: goldenrod4
-    ip: 192.168.101.104
+    ip: 192.168.54.33
     permanent_key_location: tpm_keys/goldenrod4_tpm_private.pem
     permanent_public_key: '-----BEGIN PUBLIC KEY-----
 
@@ -315,7 +315,7 @@ sites:
     runs_spines_internal: 0
     runs_spines_external: 0
   - name: goldenrod5
-    ip: 192.168.101.105
+    ip: 192.168.54.34
     permanent_key_location: tpm_keys/goldenrod5_tpm_private.pem
     permanent_public_key: '-----BEGIN PUBLIC KEY-----
 
@@ -343,7 +343,7 @@ sites:
     runs_spines_internal: 0
     runs_spines_external: 0
   - name: goldenrod6
-    ip: 192.168.101.106
+    ip: 192.168.54.35
     permanent_key_location: tpm_keys/goldenrod6_tpm_private.pem
     permanent_public_key: '-----BEGIN PUBLIC KEY-----
 
@@ -616,6 +616,11 @@ sites:
       '
     runs_spines_internal: 0
     runs_spines_external: 1
+  clients:
+  - client_id: 10
+    host: aster19
+    spines_external_daemon: aster19
+    type: proxy    
 - name: hmi_site
   type: CLIENT
   hosts:

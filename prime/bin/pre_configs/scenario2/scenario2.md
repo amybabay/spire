@@ -18,4 +18,33 @@
 
 5. Mobile Control Center (MCC) deployed and takes over as singleton control center.
 
-6. Control Center 2 recovered. System reconfigured with MCC and CC2 as control centers, plus the data center.
+6. Control Center 1 recovered. System reconfigured with MCC and CC1 as control centers.
+
+
+# Title Card:
+
+Scenario 2: Cascading Failures and Recovery via Mobile Control
+
+This scenario highlights the system’s ability to recover from sequential failures of both control centers.
+
+We begin with:
+
+    2 Control Centers (CC1 and CC2)
+
+    1 Data Center (DC)
+
+    Each site running 6 replicas
+
+We simulate a cascading failure:
+
+    1. CC2 fails — system reconfigures to run solely on CC1
+
+    2. CC1 then fails — no active control centers remain
+
+To restore control:
+
+    A Mobile Control Center (MCC) is deployed and takes over as a singleton control center
+
+Finally:
+
+    CC1 is recovered and the system reconfigures to a two-site control: MCC and CC1, alongside the Data Center

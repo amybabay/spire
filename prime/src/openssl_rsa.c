@@ -709,51 +709,51 @@ int32u OPENSSL_RSA_Digests_Equal(unsigned char *digest1,
 	return 1;
 }
 
-void OPENSSL_RSA_Make_Digest(const void *buffer, size_t buffer_size,
-							 unsigned char *digest_value)
+void OPENSSL_RSA_Make_Digest(const void *buffer, size_t buffer_size, 
+							 unsigned char *digest_value) 
 {
 
-	/* EVP functions are a higher level abstraction that encapsulate many
-	 * different digest algorithms. We currently use sha1. The returned digest
-	 * is for sha1 and therefore we currently assume that functions which use
-	 * this type of digest. It would be best to extend the encapsulation
-	 * through our code. TODO Note that there may be an increase in
-	 * computational cost because these high-level functions are used. We might
-	 * want to test this and see if we take a performance hit. */
-
-	int32u md_len;
-
-#if REMOVE_CRYPTO
-	// return;
+    /* EVP functions are a higher level abstraction that encapsulate many
+     * different digest algorithms. We currently use sha1. The returned digest
+     * is for sha1 and therefore we currently assume that functions which use
+     * this type of digest. It would be best to extend the encapsulation
+     * through our code. TODO Note that there may be an increase in
+     * computational cost because these high-level functions are used. We might
+     * want to test this and see if we take a performance hit. */
+    
+    int32u md_len;
+    
+#if REMOVE_CRYPTO 
+    // return;
 #endif
+  
+    // memset(digest_value, 0, DIGEST_SIZE);
+    // return;
 
-	// memset(digest_value, 0, DIGEST_SIZE);
-	// return;
+    sp_time start, end, diff;
+    double elap;
+    start = E_get_time();
 
-	sp_time start, end, diff;
-	double elap;
-	start = E_get_time();
+    EVP_DigestInit_ex(mdctx, message_digest, NULL);
+    EVP_DigestUpdate(mdctx, buffer, buffer_size);
+    EVP_DigestFinal_ex(mdctx, digest_value, &md_len);
 
-	EVP_DigestInit_ex(mdctx, message_digest, NULL);
-	EVP_DigestUpdate(mdctx, buffer, buffer_size);
-	EVP_DigestFinal_ex(mdctx, digest_value, &md_len);
-
-	/* Check to determine if the digest length is expected for sha1. It should
-	 * be DIGEST_SIZE bytes, which is 20 */
-
-	if (md_len != DIGEST_SIZE)
+    /* Check to determine if the digest length is expected for sha1. It should
+     * be DIGEST_SIZE bytes, which is 20 */
+   
+    if (md_len != DIGEST_SIZE) 
 	{
-		Alarm(EXIT, "An error occurred while generating a message digest.\n"
-					"The length of the digest was set to %d. It should be %d.\n",
-			  md_len, DIGEST_SIZE);
-	}
+        Alarm(EXIT, "An error occurred while generating a message digest.\n"
+		"The length of the digest was set to %d. It should be %d.\n",
+		 md_len, DIGEST_SIZE);
+    }
 
-	end = E_get_time();
-	diff = E_sub_time(end, start);
-	elap = diff.sec + diff.usec / 1000000.0;
-	if (elap >= 0.0015)
-		Alarm(DEBUG, "OPENSSL_Digest: %f sec\n", elap);
-
+    end = E_get_time();
+    diff = E_sub_time(end, start);
+    elap = diff.sec + diff.usec / 1000000.0;
+    if (elap >= 0.0015)
+        Alarm(DEBUG, "OPENSSL_Digest: %f sec\n", elap);
+    
 #if 0 
     printf("Digest is, size %d: ",md_len);
 #endif
