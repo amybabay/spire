@@ -80,7 +80,7 @@ int main(int argc, char **argv)
   Usage(argc, argv);
   Alarm_set_types(NONE);
   // Alarm_set_types(STATUS);
-  Alarm_set_types(PRINT);
+  // Alarm_set_types(PRINT);
   // Alarm_set_types(DEBUG);
   Alarm_enable_timestamp_high_res(NULL);
 

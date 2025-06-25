@@ -380,7 +380,7 @@ void generate_keys(struct config *cfg)
         for (unsigned j = 0; j < site->replicas_count; j++)
         {
             struct replica *replica = &site->replicas[j];
-            struct host *replica_host = find_host_for_replica(site, replica->host);
+            struct host *replica_host = find_host_by_name(site, replica->host);
 
             if (replica_host)
             {
@@ -396,7 +396,7 @@ void generate_keys(struct config *cfg)
         for (unsigned j = 0; j < site->clients_count; j++)
         {
             struct client *client = &site->clients[j];
-            struct host *client_host = find_host_for_replica(site, client->host);
+            struct host *client_host = find_host_by_name(site, client->host);
 
             if (client_host)
             {
@@ -516,3 +516,16 @@ int is_hmi(unsigned client_id, struct config *cfg)
     return 0; // Client not found
 }
 
+static struct host *find_host_by_name(const struct config *cfg, const char *name)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+        for (unsigned j = 0; j < site->hosts_count; j++)
+        {
+            if (strcmp(site->hosts[j].name, name) == 0)
+                return &site->hosts[j];
+        }
+    }
+    return NULL;
+}

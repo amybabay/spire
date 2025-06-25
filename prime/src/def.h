@@ -82,7 +82,8 @@
 #define USE_ERASURE_CODES 0
 
 /* Variability constant K_Lat */
-#define VARIABILITY_KLAT 2.5
+// #define VARIABILITY_KLAT 2.5
+#define VARIABILITY_KLAT 10.0
 
 /* Catchup History - To catch other replicas up, we
  * keep AT LEAST this many ord_slots around so that we can give them

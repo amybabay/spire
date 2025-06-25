@@ -60,8 +60,8 @@ sites:
       -----END PUBLIC KEY-----
 
       '
-    runs_spines_internal: 0
-    runs_spines_external: 0
+    runs_spines_internal: 1
+    runs_spines_external: 1
   - name: goldenrod3
     ip: 192.168.54.32
     permanent_key_location: tpm_keys/goldenrod3_tpm_private.pem
@@ -88,8 +88,8 @@ sites:
       -----END PUBLIC KEY-----
 
       '
-    runs_spines_internal: 0
-    runs_spines_external: 0
+    runs_spines_internal: 1
+    runs_spines_external: 1
   - name: goldenrod4
     ip: 192.168.54.33
     permanent_key_location: tpm_keys/goldenrod4_tpm_private.pem
@@ -116,8 +116,8 @@ sites:
       -----END PUBLIC KEY-----
 
       '
-    runs_spines_internal: 0
-    runs_spines_external: 0
+    runs_spines_internal: 1
+    runs_spines_external: 1
   - name: goldenrod5
     ip: 192.168.54.34
     permanent_key_location: tpm_keys/goldenrod5_tpm_private.pem
@@ -144,8 +144,8 @@ sites:
       -----END PUBLIC KEY-----
 
       '
-    runs_spines_internal: 0
-    runs_spines_external: 0
+    runs_spines_internal: 1
+    runs_spines_external: 1
   - name: goldenrod6
     ip: 192.168.54.35
     permanent_key_location: tpm_keys/goldenrod6_tpm_private.pem
@@ -172,8 +172,8 @@ sites:
       -----END PUBLIC KEY-----
 
       '
-    runs_spines_internal: 0
-    runs_spines_external: 0
+    runs_spines_internal: 1
+    runs_spines_external: 1
   replicas:
   - instance_id: 1
     host: goldenrod1
@@ -181,24 +181,24 @@ sites:
     spines_external_daemon: goldenrod1
   - instance_id: 2
     host: goldenrod2
-    spines_internal_daemon: goldenrod1
-    spines_external_daemon: goldenrod1
+    spines_internal_daemon: goldenrod2
+    spines_external_daemon: goldenrod2
   - instance_id: 3
     host: goldenrod3
-    spines_internal_daemon: goldenrod1
-    spines_external_daemon: goldenrod1
+    spines_internal_daemon: goldenrod3
+    spines_external_daemon: goldenrod3
   - instance_id: 4
     host: goldenrod4
-    spines_internal_daemon: goldenrod1
-    spines_external_daemon: goldenrod1
+    spines_internal_daemon: goldenrod4
+    spines_external_daemon: goldenrod4
   - instance_id: 5
     host: goldenrod5
-    spines_internal_daemon: goldenrod1
-    spines_external_daemon: goldenrod1
+    spines_internal_daemon: goldenrod5
+    spines_external_daemon: goldenrod5
   - instance_id: 6
     host: goldenrod6
-    spines_internal_daemon: goldenrod1
-    spines_external_daemon: goldenrod1
+    spines_internal_daemon: goldenrod6
+    spines_external_daemon: goldenrod6
 - name: plc_site
   type: CLIENT
   hosts:

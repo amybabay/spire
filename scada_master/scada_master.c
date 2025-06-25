@@ -127,6 +127,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
     }
 
+    My_Global_Configuration_Number = cfg->configuration_id;
     Init_SM_Replicas(cfg);
 
     const char *int_ip, *ext_ip;

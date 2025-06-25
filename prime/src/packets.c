@@ -819,7 +819,7 @@ signed_message* PRE_ORDER_Construct_Update(int32u type)
     Alarm(DEBUG, "Construct Update: type=%u, [%d, %d, %d] using timestamp %u %u\n", 
             type, VAR.My_Server_ID, DATA.PO.po_seq.incarnation, 
             DATA.PO.po_seq.seq_num + 1, mess->incarnation, up->seq_num);
-
+    Alarm(PRINT, "PRE_ORDER_Constrcut_Update: constructed message with configuration id %u\n", mess->global_configuration_number);
     /* Sign the update (using server key) */
     /* PRTODO - eventually replace this with TPM sign for the first update */
     UTIL_RSA_Sign_Message(mess);
@@ -1167,6 +1167,7 @@ signed_message *SUSPECT_Construct_New_Leader_Proof()
 
     /* Construct new message */
     new_leader_proof = UTIL_New_Signed_Message();
+    Alarm(DEBUG, "1_SUSPECT_Construct_New_Leader_Proof: constructed message with global configuration id: %u\n", new_leader_proof->global_configuration_number);
     nlm_specific = (new_leader_proof_message *)(new_leader_proof + 1);
 
     new_leader_proof->machine_id  = VAR.My_Server_ID;
@@ -1213,6 +1214,7 @@ signed_message *SUSPECT_Construct_New_Leader_Proof()
                     DATA.View, stored->machine_id);
         }
     }*/
+    Alarm(DEBUG, "2_SUSPECT_Construct_New_Leader_Proof: constructed message with global configuration id: %u\n", new_leader_proof->global_configuration_number);
 
     return new_leader_proof;
 }
@@ -1755,6 +1757,12 @@ signed_message *PR_Construct_Incarnation_Cert()
     incarnation_cert_message        *ic_specific;
     byte                            *ptr;
 
+#if 0 // Debug vars
+    int32u ni_size, ack_size;
+    byte ni_digest[DIGEST_SIZE];
+    char digest_str[2 * DIGEST_SIZE + 1];
+#endif
+
     /* Construct new message */
     ic              = UTIL_New_Signed_Message();
     ic_specific     = (incarnation_cert_message *)(ic + 1);
@@ -1767,67 +1775,60 @@ signed_message *PR_Construct_Incarnation_Cert()
     ic->monotonic_counter = 1;  // PRTODO: update with TPM counter
 
     /* Copy in the new_incarnation message */
-    //jack added:
-    signed_message *ni_msg = DATA.PR.new_incarnation[VAR.My_Server_ID];
-    // end jack added
-
     size = UTIL_Message_Size(DATA.PR.new_incarnation[VAR.My_Server_ID]);
+
+#if 0
+    ni_size = size;
+    Alarm(PRINT, "PR_Construct_Incarnation_Cert: ni_msg size: %u\n", ni_size);
+    OPENSSL_RSA_Make_Digest((byte *)DATA.PR.new_incarnation[VAR.My_Server_ID], ni_size, ni_digest);
+    for (i = 0; i < DIGEST_SIZE; i++)
+        sprintf(&digest_str[2 * i], "%02x", ni_digest[i]);
+    digest_str[2 * DIGEST_SIZE] = '\0';
+    Alarm(PRINT, "  ni_digest: %s\n", digest_str);
+#endif
+
     memcpy(ptr, DATA.PR.new_incarnation[VAR.My_Server_ID], size);
     ic->len += size;
     ptr += size;
 
-    //jack added:
-    byte ni_digest[DIGEST_SIZE];
-    OPENSSL_RSA_Make_Digest((byte *)ni_msg, size, ni_digest);
-
-    Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest of NEW_INCARNATION:\n");
-    char digest_str[2 * DIGEST_SIZE + 1];
-    for (i = 0; i < DIGEST_SIZE; i++) {
-        sprintf(&digest_str[2 * i], "%02x", ni_digest[i]);
-    }
-    digest_str[2 * DIGEST_SIZE] = '\0'; 
-
-    Alarm(PRINT, "  digest: %s\n", digest_str);
-    //end jack added
     count = 0;
-    for (i = 1; i <=  VAR.Num_Servers && count < 2*VAR.F + VAR.K + 1; i++) {
+    for (i = 1; i <= VAR.Num_Servers && count < 2 * VAR.F + VAR.K + 1; i++) {
 
         if (DATA.PR.recv_incarnation_ack[i] == NULL) 
             continue;
 
-#if 1 //jack added
-
-            size = UTIL_Message_Size(DATA.PR.recv_incarnation_ack[i]);
-            incarnation_ack_message *ack_specific = (incarnation_ack_message *)(DATA.PR.recv_incarnation_ack[i] + 1);
-
-            char digest_str[2 * DIGEST_SIZE + 1];
-
-            for (int j = 0; j < DIGEST_SIZE; j++)
-                sprintf(&digest_str[2 * j], "%02x", ack_specific->digest[j]);
-            Alarm(PRINT, "  ack_digest: %s\n", digest_str);
-
-            for (int j = 0; j < DIGEST_SIZE; j++)
-                sprintf(&digest_str[2 * j], "%02x", ni_digest[j]);
-            Alarm(PRINT, "  ni_digest : %s\n", digest_str);
-
-            if (!OPENSSL_RSA_Digests_Equal(ack_specific->digest, ni_digest)) {
-                Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest mismatch for ack from server %u\n", i);
-            } else {
-                Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest match for ack from server %u\n", i);
-            }
-
-#endif //end jack added
-
         size = UTIL_Message_Size(DATA.PR.recv_incarnation_ack[i]);
+
+#if 0
+        ack_size = size;
+        Alarm(PRINT, "PR_Construct_Incarnation_Cert: recv_incarnation_ack[%u] size: %u\n", i, ack_size);
+        incarnation_ack_message *ack_specific = (incarnation_ack_message *)(DATA.PR.recv_incarnation_ack[i] + 1);
+        for (int j = 0; j < DIGEST_SIZE; j++)
+            sprintf(&digest_str[2 * j], "%02x", ack_specific->digest[j]);
+        digest_str[2 * DIGEST_SIZE] = '\0';
+        Alarm(PRINT, "  ack_digest from %u: %s\n", i, digest_str);
+        for (int j = 0; j < DIGEST_SIZE; j++)
+            sprintf(&digest_str[2 * j], "%02x", ni_digest[j]);
+        digest_str[2 * DIGEST_SIZE] = '\0';
+        Alarm(PRINT, "  ni_digest         : %s\n", digest_str);
+
+        if (!OPENSSL_RSA_Digests_Equal(ack_specific->digest, ni_digest)) {
+            Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest mismatch for ack from server %u\n", i);
+        } else {
+            Alarm(PRINT, "PR_Construct_Incarnation_Cert: Digest match for ack from server %u\n", i);
+        }
+#endif
+
         memcpy(ptr, DATA.PR.recv_incarnation_ack[i], size);
-        ic->len += size;;
+        ic->len += size;
         ptr += size;
         count++;
     }
-    
-    assert(count == 2*VAR.F + VAR.K + 1);
+
+    assert(count == 2 * VAR.F + VAR.K + 1);
     return ic;
 }
+
 
 signed_message* PR_Construct_Pending_State(int32u target, int32u acked_nonce)
 {
@@ -2101,6 +2102,7 @@ signed_message *PR_Construct_Reset_NewLeaderProof()
 
     /* Construct new message */
     rnlp             = UTIL_New_Signed_Message();
+    Alarm(DEBUG, "1_PR_Construct_Reset_NewLeaderProof: constructed message with global configuration id: %u\n", rnlp->global_configuration_number);
     rnlp_specific    = (reset_newleaderproof_message *)(rnlp + 1);
 
     rnlp->machine_id        = VAR.My_Server_ID;
@@ -2135,6 +2137,8 @@ signed_message *PR_Construct_Reset_NewLeaderProof()
 
     assert(count == 2*VAR.F + VAR.K + 1);
     
+    Alarm(DEBUG, "2_PR_Construct_Reset_NewLeaderProof: constructed message with global configuration id: %u\n", rnlp->global_configuration_number);
+
     return rnlp;
 }
 
@@ -2237,6 +2241,7 @@ signed_message *PR_Construct_Reset_Certificate()
 
     /* Construct new message */
     rc          = UTIL_New_Signed_Message();
+    Alarm(DEBUG, "1_PR_Construct_Reset_Certificate: constructed message with global configuration id: %u\n", rc->global_configuration_number);
     rc_specific = (reset_certificate_message *)(rc + 1);
 
     rc->machine_id        = VAR.My_Server_ID;
@@ -2268,6 +2273,8 @@ signed_message *PR_Construct_Reset_Certificate()
         count++;
     }   
     assert(count == 2*VAR.F + VAR.K + 1); 
+
+    Alarm(DEBUG, "2_PR_Construct_Reset_Certificate: constructed message with global configuration id: %u\n", rc->global_configuration_number);
 
     return rc;
 }

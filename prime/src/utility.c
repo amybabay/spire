@@ -871,7 +871,7 @@ void UTIL_Send_To_Server(signed_message *mess, int32u server_id)
 		}
 	}
 #endif
-Alarm(PRINT, "Sending mess type %s of global configuration number %u of length %d from client: %d\n",  UTIL_Type_To_String(mess->type), mess->global_configuration_number,ret,mess->machine_id);
+Alarm(DEBUG, "Sending mess type %s of global configuration number %u of length %d from client: %d\n",  UTIL_Type_To_String(mess->type), mess->global_configuration_number,ret,mess->machine_id);
 }
 
 /* Broadcast a message to all servers except me.  Use multicast is
@@ -997,6 +997,7 @@ void UTIL_Broadcast(signed_message *mess)
 	}
 	/* } */
 #endif
+Alarm(DEBUG, "Sending mess type %s of global configuration number %u of length %d from client: %d\n",  UTIL_Type_To_String(mess->type), mess->global_configuration_number,ret,mess->machine_id);
 }
 
 void UTIL_Send_IP_Multicast(sys_scatter *scat)

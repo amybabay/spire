@@ -3,7 +3,7 @@ FROM almalinux:latest
 # Install Spire dependencies
 RUN dnf install -y dnf-plugins-core
 RUN dnf config-manager --set-enabled crb
-RUN dnf install -y openssl-devel flex byacc qt5-devel cmake python git libyaml-devel libtool  gdb valgrind vim make gcc iproute-tc
+RUN dnf install -y openssl-devel flex byacc qt5-devel cmake python git libyaml-devel libtool gdb valgrind vim make gcc iproute-tc
 
 # Install debugging tools
 
@@ -20,9 +20,9 @@ WORKDIR /app/spire
 # RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
 
 # Build Spire core
-# RUN make reconfiguration
+RUN make reconfiguration
 
-# Run setup during build
+# Run setup during buildmake 
 # RUN python3 /app/spire/check_keys.py && \
 #     cd /app/spire/example_conf && ./install_conf.sh conf_4
 

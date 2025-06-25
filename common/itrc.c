@@ -721,13 +721,14 @@ void *ITRC_Prime_Inject(void *data)
                 mess->machine_id = My_ID;
                 mess->len = sizeof(signed_update_message) - sizeof(signed_message);
                 mess->type = UPDATE;
+                mess->global_configuration_number = itrcd->cfg->configuration_id;
                 up = (update_message *)(mess + 1);
                 up->server_id = My_ID;
                 payload = (signed_message *)(up + 1);
                 payload->machine_id = My_ID;
                 payload->type = PRIME_STATE_TRANSFER;
-                //printf("Sending down STATE TRANSFER request!\n");
-
+                // printf("Prime_Inject: Sending down STATE TRANSFER request, global config number: %u!\n", mess->global_configuration_number);
+                
                 /* SIGN Message */
                 OPENSSL_RSA_Sign( ((byte*)mess) + SIGNATURE_SIZE,
                         sizeof(signed_message) + mess->len - SIGNATURE_SIZE,

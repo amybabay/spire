@@ -564,19 +564,6 @@ static int ip_in_list(const char *ip, DaemonEntry *list, size_t count)
     return 0;
 }
 
-static struct host *find_host_by_name(const struct config *cfg, const char *name)
-{
-    for (unsigned i = 0; i < cfg->sites_count; i++)
-    {
-        struct site *site = &cfg->sites[i];
-        for (unsigned j = 0; j < site->hosts_count; j++)
-        {
-            if (strcmp(site->hosts[j].name, name) == 0)
-                return &site->hosts[j];
-        }
-    }
-    return NULL;
-}
 
 /**
  * Appends a new DaemonEntry to the list if the IP is not already present.
@@ -1067,19 +1054,9 @@ void start_components_from_config(const struct config *cfg, const struct host *m
     // give spines time to start
     if (restarted->spines_ext || restarted->spines_int)
     {
-        for (unsigned i = 0; i < cfg->sites_count; i++)
-        {
-            struct site *site = &cfg->sites[i];
-            for (unsigned j = 0; j < site->replicas_count; j++)
-            {
-                struct replica *r = &site->replicas[j];
-                struct host *rep_host = find_host_for_replica(site, r->host);
-
-                if (rep_host == me)
-                    sleep(3 + (r->instance_id / 10));
-            }
-        }
+        sleep(3);
     }
+    
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
         struct site *site = &cfg->sites[i];
@@ -1100,8 +1077,8 @@ void start_components_from_config(const struct config *cfg, const struct host *m
                 snprintf(cmd, sizeof(cmd),
                          "cd ../../scada_master && ./scada_master %u %u %s &",
                          r->instance_id, r->instance_id,
-                         log_to_file ? "> ../prime/bin/logs/sm.log" : "");
-                //  log_to_file ? "> ../prime/bin/logs/sm.log 2>/dev/null" : "2>/dev/null");
+                        //  log_to_file ? "> ../prime/bin/logs/sm.log" : "");
+                 log_to_file ? "> ../prime/bin/logs/sm.log 2>/dev/null" : "2>/dev/null");
                 system(cmd);
                 restarted->prime = 1;
                 restarted->scada_master = 1;

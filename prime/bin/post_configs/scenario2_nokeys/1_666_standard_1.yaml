@@ -1,0 +1,401 @@
+configuration_id: 1
+tolerated_byzantine_faults: 1
+tolerated_unavailable_replicas: 7
+service_keys:
+  sm_threshold_public_key: ''
+  prime_threshold_public_key: ''
+sites:
+- name: control_center1
+  type: CONTROL_CENTER
+  hosts:
+  - name: aster1
+    ip: 192.168.54.10
+    permanent_key_location: tpm_keys/aster1_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 1
+    runs_spines_external: 1
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster2
+    ip: 192.168.54.11
+    permanent_key_location: tpm_keys/aster2_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster3
+    ip: 192.168.54.12
+    permanent_key_location: tpm_keys/aster3_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster4
+    ip: 192.168.54.13
+    permanent_key_location: tpm_keys/aster4_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster5
+    ip: 192.168.54.14
+    permanent_key_location: tpm_keys/aster5_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster6
+    ip: 192.168.54.15
+    permanent_key_location: tpm_keys/aster6_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  replicas:
+  - instance_id: 1
+    host: aster1
+    spines_internal_daemon: aster1
+    spines_external_daemon: aster1
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 4
+    host: aster2
+    spines_internal_daemon: aster1
+    spines_external_daemon: aster1
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 7
+    host: aster3
+    spines_internal_daemon: aster1
+    spines_external_daemon: aster1
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 10
+    host: aster4
+    spines_internal_daemon: aster1
+    spines_external_daemon: aster1
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 13
+    host: aster5
+    spines_internal_daemon: aster1
+    spines_external_daemon: aster1
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 16
+    host: aster6
+    spines_internal_daemon: aster1
+    spines_external_daemon: aster1
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+- name: control_center2
+  type: CONTROL_CENTER
+  hosts:
+  - name: aster7
+    ip: 192.168.54.16
+    permanent_key_location: tpm_keys/aster7_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 1
+    runs_spines_external: 1
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster8
+    ip: 192.168.54.17
+    permanent_key_location: tpm_keys/aster8_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster9
+    ip: 192.168.54.18
+    permanent_key_location: tpm_keys/aster9_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster10
+    ip: 192.168.54.19
+    permanent_key_location: tpm_keys/aster10_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster11
+    ip: 192.168.54.20
+    permanent_key_location: tpm_keys/aster11_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster12
+    ip: 192.168.54.21
+    permanent_key_location: tpm_keys/aster12_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  replicas:
+  - instance_id: 2
+    host: aster7
+    spines_internal_daemon: aster7
+    spines_external_daemon: aster7
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 5
+    host: aster8
+    spines_internal_daemon: aster7
+    spines_external_daemon: aster7
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 8
+    host: aster9
+    spines_internal_daemon: aster7
+    spines_external_daemon: aster7
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 11
+    host: aster10
+    spines_internal_daemon: aster7
+    spines_external_daemon: aster7
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 14
+    host: aster11
+    spines_internal_daemon: aster7
+    spines_external_daemon: aster7
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 17
+    host: aster12
+    spines_internal_daemon: aster7
+    spines_external_daemon: aster7
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+- name: data_center1
+  type: DATA_CENTER
+  hosts:
+  - name: aster13
+    ip: 192.168.54.22
+    permanent_key_location: tpm_keys/aster13_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 1
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster14
+    ip: 192.168.54.23
+    permanent_key_location: tpm_keys/aster14_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster15
+    ip: 192.168.54.24
+    permanent_key_location: tpm_keys/aster15_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster16
+    ip: 192.168.54.25
+    permanent_key_location: tpm_keys/aster16_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster17
+    ip: 192.168.54.26
+    permanent_key_location: tpm_keys/aster17_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  - name: aster18
+    ip: 192.168.54.27
+    permanent_key_location: tpm_keys/aster18_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 0
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  replicas:
+  - instance_id: 3
+    host: aster13
+    spines_internal_daemon: aster13
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 6
+    host: aster14
+    spines_internal_daemon: aster13
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 9
+    host: aster15
+    spines_internal_daemon: aster13
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 12
+    host: aster16
+    spines_internal_daemon: aster13
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 15
+    host: aster17
+    spines_internal_daemon: aster13
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+  - instance_id: 18
+    host: aster18
+    spines_internal_daemon: aster13
+    instance_public_key: ''
+    encrypted_instance_private_key: ''
+    encrypted_prime_threshold_key_share: ''
+    encrypted_sm_threshold_key_share: ''
+- name: plc_site
+  type: CLIENT
+  hosts:
+  - name: aster19
+    ip: 192.168.54.28
+    permanent_key_location: tpm_keys/aster19_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 1
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  clients:
+  - client_id: 10
+    host: aster19
+    spines_external_daemon: aster19
+    type: proxy
+    instance_public_key: '-----BEGIN PUBLIC KEY-----
+
+      MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDRcPJfb63dgPaBfyOONFG7jKeo
+
+      qiXuUqYgva/MwTwflkRevc/AoFO7EQXN0gt6ILpDVfJ5xJyIKverivlyhPizKwGp
+
+      TzqmGbnOqrAZX6uvRYktTEqF6sX0NvOukLroiSLORDdqcLEy2fJ+RSja2jDegOur
+
+      1aFp9I4MR1BfAFx+jwIDAQAB
+
+      -----END PUBLIC KEY-----
+
+      '
+    encrypted_instance_private_key: 58b8ca1644ab7267344babe62f79d4054e69466d853d71fce8086ec5956bf62e81d98920c3ddd1c697a40c0dde993dca4a54e66f52cd58ecc08bd565318aac0ebac4e1bb56d62e669ee9b1802912294401f340f302129aed982c0ff6866adb6eddcaed688d61567633386ff243355a1cf5e398caa8eb36be7f59e58072dfef6f8f6befc75e7797caad678ec04d6dd6b63189bac0bcd8ece4fd53a2bf95f2a0c38273c7deae211d63b528421899b3203971b4a42b4b8992bdd0a94ffe24590e66bcbf2a2bc27f1a98220ed9ac1f776070d0fa7c07e62c17c27eeb788f7ab55f63656d77ae0e8924d0bb55cce1eac30488b71a0cd2166d59513246c8ea16f8bb3ded0611f6d623579d6f82f7ac6fc27538da3615cfd28944a3ae8c1d8c62f3184bc6a730e32ec05e137b6d34a6b293fd35b528b086e41f037834fec25197a5943e977099a8e384d9d2bcb700686b20be3ecde572dc294a677d68ae630a964461a5cb29468e075e973900e3324c884d7fc5cd4f0d83500bd0a2d1af91e90bf2e4ee9306bb70c410761d8eecd8c0fa9b3f320c68163d4318b7526af3eead205a9d62d5b0b01eabfa438d689452059febf3f27b7d2abf61967740116b157b5fc9ce67f3ce0350adc11f967035ec798374d717e3978a2727a9159b42230ad11a4fcabd66ff1c5723d58df3c7f5c00e45c5a653387262ecc9dbe1cf4da47064e8277bb89847ca2fb84f118beb31a29c21fc0a491beffa8f84f441a2beb0f26c48064577b3c78901b180b37462bf96951becf8400137f74b7ca769ddc9b2b92e3f9713c86826d8be0130718e9bde6863cc25b2f700dcc637fa9bc481516cb91d983bb86fe621fdf6d7b3d3d0913e142174c3ba59a6839cd22d5b1a665e8dab6bc08ae964a6ccbbb2b6da562ddd7822a607f8b9e4ff44772fdf252019c835dfde709f4741023ef0367766115bfc19eac51b333a9abd6218ec19d6704ac43fdadf6e6f77ac5aa691043ec823833013b0b1a3e30ab46e36f996764fa46c47db6182fe3cd06dc1569797e35c6e28fa6c04e8ca4c15798bad51368993383ae38cfbd3909489a4a0adf691f03f8d02178e23bcd1da10500917de0c3db88c0e8c1e812eba4bac317431c9a41dcae244c96672e45698de5fcaca552df9cfbe30acd9e79e3fe1db0a0031cb87b6b4f20b21c32f10f02c95fa356ce48a96abd0a087458a306f636e7a07ae4b1fed7b2c4505bd8317194c83146f769906a47c5156fa2c98fc996997e33f0a594a9783ca2eb278812dd60dcf870c826a9db1e2ffbbcd8da25ef2490900892b1d46a9d1855933fd112542ea393659a669c33f19738f51ab3b6c6f0156c086d572da648d47235ab3e5aff610bf4afc998720ecd2e0f123eb96c6e39baf2111e766a50797fd7b72d7fc923e644b60f853f6cbf1d6570f5dbfcd54836c4ee6d8e103f110f8eb0939fb5d624e5786f6d2b327fb2f69395f72b14ed1610fbc66b67226f64f9876fd234fe45caef9aac3f4fbc360d065a61dba73a20d3a68ce077868e60e1a4bd6376730398a872abd287773a27ca804d53d487a71e876597ff9a448ea5325ba70cd2e24de52b0e2dc9fe8ac31303edc7bfb581d640a52f861a227295ca7de36e991be4df4596ab162ec179c04b61fdb637f7df4d87525b392e011e2c5886857b85e4c17cd461029d1da500960565559880197c2a3130a6e8d0e77cb8926d4466ca30fb685ed38f5107e06e8d52f510da18b4a9ddfa4f64610f8e0405d0a3fa3d3b3bcc5bb3cd0b90abd138e356681c7f14bd4f549e01f7e088924fae3089a5138b172102f678da28de541a7c9116dd0fd65c7141ef4b91a10ec
+- name: hmi_site
+  type: CLIENT
+  hosts:
+  - name: aster20
+    ip: 192.168.54.29
+    permanent_key_location: tpm_keys/aster20_tpm_private.pem
+    permanent_public_key: ''
+    runs_spines_internal: 0
+    runs_spines_external: 1
+    spines_internal_public_key: ''
+    encrypted_spines_internal_private_key: ''
+    spines_external_public_key: ''
+    encrypted_spines_external_private_key: ''
+  clients:
+  - client_id: 2
+    host: aster20
+    spines_external_daemon: aster20
+    type: PNNL
+    instance_public_key: '-----BEGIN PUBLIC KEY-----
+
+      MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDqk0CVLzTnlvW05GlCACexkqur
+
+      8+xD7XmG+48+3k4m3X3di36N5YH4zKrhwVx7v4wEJtdpx2H9IwE6voc5F+2Qzwiz
+
+      ebkFtTeFkPgT+DJmHKaWmYe6iP/BaGzewACUlnHysnN/cGDo5VMNcs4UPY8KSK91
+
+      +Hr/KFcrKloCA/ZRywIDAQAB
+
+      -----END PUBLIC KEY-----
+
+      '
+    encrypted_instance_private_key: a347502997cb1820297739cc18177e1de82a258d542c6c488fde3d5b980f600838e821930392c511be2ef133d7e944415b79f5e7cd6bc4c6c60e84d57e66406bd4328d86cf815565302014ed38606dd3a863d9ac8a8000f02a322413d1074865f20c3ec201cb1628d18bcc4665a976becf17fbae3b242851cf7ec5120ad88956bf9f5290286b0d42d46a27d1eff020fdf7dd184b4fcac7d3f32e6d8629c80db4c1975828c7eb7c594c520ec2605a14d9fa33c2d6d9726b18d15d512d8099503ee5423f1d2999b5ff0578123b71e6a365e9fd388faa3bb09ee5df5f2177634a4f2eaaffc332e443e34a57d1d7e70f88c53d0a979fec61316a80e4232712607dafe0c7d3048c404bb13c8303e32bcaabf00a916eae2a2c7704655976e9afdb428a3176ba507d60e77c82c3917bd9a116e77385bd9b1ec08d1e8c02d36e85932179b496536ca02851fce99ef4dde76f55bd4a245aac4a1008b02596f389914a19d76f75c379ee88fff969a822f0ebde96e0aaca85566095cf3e3a5ac07782cbae7698163dadc4e734dd0669e9ed5ee947287af7d6040aef6658b057fc231a73a1da5c2f32e334f8d8383a9c65c062d4562a8ea1ddead51091d551101cff4540d88daded24274ad4bac407a5f3a3b1b301157ea97505eb9e0f976fbabb159d17805c3a3f7c8793657000121cd8b13fc47908b4bc86314fad5240030294bcce3357406a1820acc69845370a5e7f27178d21899ba949e267ddcea5cd6367ea48e5afa4303763cc3fab7af3d6961d8f6d27d9d96e4cdeea8138f9255711e6a388de29cc06cf061e4cfdafabc169d83ad0fcc095c0736933fc415f89522069ac6567511482ea28ffd108b4a079296ffd0f11e75d1eb218708b8306339291b37a60aba59ae51f9d54ce721b3c3b5e71170b9018b904a213646857317d6a988aad2a832481d91f00bb64d5a8085a15a21175bbcb46e37841134713beb20d5d7d2ad78a8a7a63ad4bbe65bd860a10ed54fee9a018623695d05d901e0b1c4a3d8f7cbc53e5f944c5ad3520ed374f19e7487d01fff7bcf81807fc3ef325a053f76dc8d29efba60a1b56e9592af6f4b77d0ea362767b305a9e73348a404c0e5cf0b308cf6092379571bfaa48787852c3f59ad45605f6780bf7ba340dd307b0adbd5d2dda5dc86693f34550b2f297a0f920d5264b361297390ea571bcf0e4e06daa3b5a85f9679c6e4830dbca6cb88402e6661acb5723d56ff8d410faa41261129150c06afaf5f09319a73e3e3d38c575f4f7941447732dc12379d61efc214a43f2e3be5d067357b7c7b6e21f1eb90058d7916a26624c0f7f4df297af0fe30d68f325194dfe3047f9e496e1c390b445b7d14e716d6c6e0c62ffa2f3daf1ee484de8b4afb4d643abae8826ab8d7bbef801a8f36b155a3f0696540f3551388de840b119ca492b5cbe8094599c22974e441a8c71acf6b3be1184b464e7e2287709719593321ae50cd477f7149dbf6898c04c6b6ff67952f87afc803460b78e8b53cdcc325643f98eccb00c26814b24d6b201abfebd40b7ce3b5d979ad903d800ee7d5f1d6d012a373188a9f25fae41e41860e6ecbf966ec7e3ec40e4a678b8ac04af6aad6c8b883ba0bc93c7b3080ecb94c03f303bf1c0115c64d73ef0e6a22cfca12cc856fbf5246cef757c3864d16ba2cb9c025b23e96070215074f48e2638bc6735da002b57229ccef010b186ab673f3992eb9401ec51e927cfcf6143c5071708f1b0a641b25f66b6c042ad6d51c0bcb57b90b18e129f881c856bdfaf2be4cac7762286e401426b7474699bac710162a374e6a0c2b526ab885825c5dac2b9ace1e98ae20453e648
