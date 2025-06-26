@@ -36,7 +36,7 @@ Sequence of Events:
 
     1. The system starts up with all three sites operational
 
-    2 CC2 fails — the system reconfigures to operate with a singleton control center (CC1)
+    2. CC2 fails — the system reconfigures to operate with a singleton control center (CC1)
 
     3. A Mobile Control Center (MCC) is deployed to restore two-site control
 

@@ -25,6 +25,8 @@ static void Print_Usage(void)
 
 static void Usage(int argc, char **argv, const char **input_yaml, const char **output_yaml)
 {
+    static char local_output_path[512]; 
+
     *input_yaml = NULL;
     *output_yaml = NULL;
 
@@ -51,8 +53,8 @@ static void Usage(int argc, char **argv, const char **input_yaml, const char **o
         }
         char *base = basename(input_copy);
         static char output_path[512];
-        snprintf(output_path, sizeof(output_path), "post_configs/%s", base);
-        *output_yaml = output_path;
+        snprintf(local_output_path, sizeof(local_output_path), "post_configs/%s", base);
+        *output_yaml = local_output_path;
         free(input_copy);
     }
 }
