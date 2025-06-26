@@ -60,13 +60,13 @@ PRIME_OBJ = prime.o data_structs.o utility.o network.o pre_order.o \
 	signature.o net_wrapper.o merkle.o suspect_leader.o \
 	reliable_broadcast.o view_change.o erasure.o recon.o \
 	tc_wrapper.o catchup.o proactive_recovery.o \
-	parser.o key_generation.o $(WRAPPER_OBJ)
+	parser.o key_generation.o config_utils.o $(WRAPPER_OBJ)
 
 DRIVER_OBJ = driver.o data_structs.o utility.o network.o pre_order.o \
 	util_dll.o packets.o nm_process.o process.o order.o \
 	signature.o net_wrapper.o erasure.o validate.o suspect_leader.o \
 	reliable_broadcast.o view_change.o catchup.o proactive_recovery.o \
-	merkle.o recon.o tc_wrapper.o parser.o key_generation.o $(WRAPPER_OBJ)
+	merkle.o recon.o tc_wrapper.o parser.o key_generation.o config_utils.o $(WRAPPER_OBJ)
 
 CM_OBJ=config_manager.o config_utils.o parser.o key_generation.o data_structs.o utility.o network.o pre_order.o \
         util_dll.o packets.o nm_process.o process.o order.o \

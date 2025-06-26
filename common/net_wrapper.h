@@ -50,6 +50,7 @@
 #include "def.h"
 #include <stdint.h>
 #include <signal.h>
+#include "../prime/src/config_utils.h"
 #include "../prime/src/parser.h"
 
 #ifndef byte

@@ -6,22 +6,22 @@
 #include <openssl/sha.h>
 #include <openssl/bn.h>
 #include "tc_wrapper.h"
-#include "key_generation.h"
-#include "parser.h"
 #include "../OpenTC-1.1/TC-lib-1.0/TC.h"
 
 #define SM_TC_DIR "tc_keys/sm/"
 #define PRIME_TC_DIR "tc_keys/prime/"
+
+static char *read_file_as_string(const char *filepath);                                                 // make static
+static void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers);                     // make static
+static void load_threshold_pubkeys(struct config *cfg);                                                 // make static
+static void generate_keys_for_host(struct host *host);                                                  // make static
+static void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index); // make static
+static void generate_keys_for_client(struct client *client, struct host *host);                         // make static
+
 /**
  * Reads the entire contents of a file into a null-terminated string.
- *
- * Opens the file at the given path, reads its contents into a newly allocated
- * buffer, and null-terminates it. The caller is responsible for freeing the buffer.
- *
- * @param filepath Path to the file to read.
- * @return Pointer to the allocated string, or NULL on failure.
  */
-char *read_file_as_string(const char *filepath)
+static char *read_file_as_string(const char *filepath)
 {
     FILE *fp = fopen(filepath, "r");
     if (!fp)
@@ -44,20 +44,10 @@ char *read_file_as_string(const char *filepath)
     return buffer;
 }
 
-/* Second pass: Generate all keys using the permanent public key */
-
 /**
  * Generates threshold cryptography key shares for all sites.
- *
- * For each site, generates separate sets of threshold keys for both
- * Scada Masters and Prime replicas, and writes them to appropriate directories.
- *
- * @param req_shares   Number of shares to generate per site.
- * @param faults       Maximum number of tolerated faults (f).
- * @param rej_servers  Number of servers allowed to reject messages (k).
- * @param num_sites    Number of sites to generate keys for.
  */
-void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers)
+static void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers)
 {
     int n = 3 * faults + 2 * rej_servers + 1;
     int k = req_shares;
@@ -74,15 +64,8 @@ void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers)
 
 /**
  * Loads threshold public keys for Scada Master and Prime into config.
- *
- * Reads the SM and Prime threshold public key files (assumed to be named `pubkey_1.pem`)
- * from their respective directories and stores the contents as strings in the config.
- *
- * @param cfg Pointer to the config structure to populate.
- *
- * @note Exits the program if either key file fails to load.
  */
-void load_threshold_pubkeys(struct config *cfg)
+static void load_threshold_pubkeys(struct config *cfg)
 {
     char sm_pubkey_path[256];
     char prime_pubkey_path[256];
@@ -103,17 +86,8 @@ void load_threshold_pubkeys(struct config *cfg)
 
 /**
  * Generates and encrypts internal and external RSA key pairs for a host.
- *
- * Uses the host's TPM public key to hybrid-encrypt newly generated 2048-bit RSA
- * private keys for internal and external use. Stores the public keys and encrypted
- * private keys in the host struct.
- *
- * @param host Pointer to the host structure to populate with key material.
- *
- * @note Requires host->permanent_public_key to be set with a PEM-encoded key.
- *       Logs errors and returns early on failure.
  */
-void generate_keys_for_host(struct host *host)
+static void generate_keys_for_host(struct host *host)
 {
     if (!host->permanent_public_key)
     {
@@ -183,21 +157,8 @@ void generate_keys_for_host(struct host *host)
 
 /**
  * Generates and encrypts keys and threshold shares for a replica.
- *
- * Creates a 2048-bit RSA key pair for the replica instance and hybrid-encrypts
- * the private key using the host's TPM public key. Also reads the replica's
- * Prime and Scada Master threshold key shares from disk and encrypts them.
- *
- * The encrypted keys and public key are stored in the replica struct.
- *
- * @param replica Pointer to the replica struct to populate.
- * @param host Pointer to the host struct containing the TPM public key.
- * @param site_index Zero-based index of the site this replica belongs to.
- * @param replica_index_within_site Index of the replica within the site (used to locate its share file).
- *
- * @note Exits early and logs errors if key generation, public key loading, or share file reading fails.
  */
-void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index)
+static void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index)
 {
     if (!host->permanent_public_key)
     {
@@ -283,11 +244,8 @@ void generate_keys_for_replica(struct replica *replica, struct host *host, unsig
 
 /**
  * Generates an RSA key pair for a client and encrypts the private key using the host's TPM public key.
- *
- * @param client Pointer to the client struct to populate with keys.
- * @param host Pointer to the host struct containing the TPM public key.
  */
-void generate_keys_for_client(struct client *client, struct host *host)
+static void generate_keys_for_client(struct client *client, struct host *host)
 {
     if (!host || !host->permanent_public_key)
     {
@@ -329,40 +287,7 @@ void generate_keys_for_client(struct client *client, struct host *host)
 }
 
 /**
- * Generates simulated TPM key pairs for all hosts in the configuration.
- *
- * Iterates through all sites and hosts in the config, generating a simulated
- * 3072-bit TPM RSA key pair for each host and storing the public key and key path.
- *
- * @param cfg Pointer to the parsed configuration structure containing sites and hosts.
- *
- * @note This should be run before generating or encrypting any other keys that
- * depend on the TPM public key. Part of the first pass.
- */
-// void first_pass_generate_tpm_keys(struct config *cfg)
-// {
-//     for (unsigned i = 0; i < cfg->sites_count; i++)
-//     {
-//         struct site *site = &cfg->sites[i];
-
-//         for (unsigned j = 0; j < site->hosts_count; j++)
-//         {
-//             generate_simulated_tpm_key_for_host(&site->hosts[j]);
-//         }
-//     }
-// }
-
-/**
  * Generates and encrypts all internal, external, and replica-specific keys.
- *
- * For each host in the config, generates internal and external RSA key pairs and
- * encrypts them with the host's TPM public key. For each replica, generates an RSA
- * key pair and encrypts associated threshold shares using its host's TPM key.
- *
- * @param cfg Pointer to the configuration structure containing all sites, hosts, and replicas.
- *
- * @note Assumes that TPM keys have already been generated and assigned in a prior pass.
- *       Logs an error if a replica's assigned host cannot be found.
  */
 void generate_keys(struct config *cfg)
 {
@@ -380,7 +305,7 @@ void generate_keys(struct config *cfg)
         for (unsigned j = 0; j < site->replicas_count; j++)
         {
             struct replica *replica = &site->replicas[j];
-            struct host *replica_host = find_host_by_name(site, replica->host);
+            struct host *replica_host = find_host_by_name(cfg, replica->host);
 
             if (replica_host)
             {
@@ -396,7 +321,7 @@ void generate_keys(struct config *cfg)
         for (unsigned j = 0; j < site->clients_count; j++)
         {
             struct client *client = &site->clients[j];
-            struct host *client_host = find_host_by_name(site, client->host);
+            struct host *client_host = find_host_by_name(cfg, client->host);
 
             if (client_host)
             {
@@ -412,18 +337,8 @@ void generate_keys(struct config *cfg)
 
 /**
  * Loads the raw YAML configuration processes it, performing all key generation and processing steps.
- *
- * This function orchestrates the full cryptographic setup:
- * 1. Loads the configuration from a YAML file.
- * 2. Generates simulated TPM keys for all hosts.
- * 3. Generates threshold cryptography key shares for all sites.
- * 4. Loads shared threshold public keys into the config.
- * 5. Generates and encrypts internal, external, and replica-specific keys.
- *
- * @param input_yaml Path to the YAML configuration file.
- * @return Pointer to the fully initialized and populated config, or NULL on failure.
  */
-struct config *load_and_process_config(const char *input_yaml, int simulate_tpm)
+struct config *load_and_process_config(const char *input_yaml)
 {
     struct config *cfg = load_yaml_config(input_yaml);
     if (!cfg)
@@ -436,24 +351,26 @@ struct config *load_and_process_config(const char *input_yaml, int simulate_tpm)
         {
             struct host *host = &site->hosts[j];
             EVP_PKEY *priv = load_key_from_file(host->permanent_key_location, 1);
-            if (!priv) {
+            if (!priv)
+            {
                 fprintf(stderr, "Error: Failed to load TPM private key from %s for host %s\n",
                         host->permanent_key_location, host->name);
                 free_yaml_config(&cfg);
                 return NULL;
             }
-            
+
             char *pub_str = get_public_key(priv);
             EVP_PKEY_free(priv);
-            
-            if (!pub_str) {
+
+            if (!pub_str)
+            {
                 fprintf(stderr, "Error: Failed to extract TPM public key from %s for host %s\n",
                         host->permanent_key_location, host->name);
                 free_yaml_config(&cfg);
                 return NULL;
             }
-            
-            host->permanent_public_key = pub_str;            
+
+            host->permanent_public_key = pub_str;
         }
     }
 
@@ -470,13 +387,6 @@ struct config *load_and_process_config(const char *input_yaml, int simulate_tpm)
 
 /**
  * Loads the Config Manager's RSA key pair from disk.
- *
- * Reads the private and public keys from predefined PEM files in the `cm_keys/` directory
- * and stores them in the provided pointers.
- *
- * @param priv_key Output pointer for the loaded private key.
- * @param pub_key Output pointer for the loaded public key.
- * @return 0 on success, -1 on failure.
  */
 int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
 {
@@ -487,17 +397,15 @@ int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key)
 
 /**
  * Determines if a given client ID corresponds to an HMI based on its type and ID.
- *
- * @param client_id The client ID to check.
- * @param cfg Pointer to the configuration structure.
- * @return 1 if the client is an HMI, 0 otherwise.
  */
 int is_hmi(unsigned client_id, struct config *cfg)
 {
-    for (unsigned i = 0; i < cfg->sites_count; i++) {
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
         struct site *site = &cfg->sites[i];
 
-        for (unsigned j = 0; j < site->clients_count; j++) {
+        for (unsigned j = 0; j < site->clients_count; j++)
+        {
             struct client *client = &site->clients[j];
 
             if (client->client_id != client_id)
@@ -505,18 +413,23 @@ int is_hmi(unsigned client_id, struct config *cfg)
 
             if ((strcmp(client->type, "JHU") == 0 && client_id == 1) ||
                 (strcmp(client->type, "PNNL") == 0 && client_id == 2) ||
-                (strcmp(client->type, "EMS") == 0 && client_id == 3)) {
+                (strcmp(client->type, "EMS") == 0 && client_id == 3))
+            {
                 return 1;
             }
 
-            return 0; // Found the client, but it's not an HMI
+            return 0; 
         }
     }
 
-    return 0; // Client not found
+    return 0; 
 }
 
-static struct host *find_host_by_name(const struct config *cfg, const char *name)
+/**
+ * Finds and returns a pointer to the host struct with the given name.
+ * Searches all hosts across all sites in the configuration.
+ */
+struct host *find_host_by_name(const struct config *cfg, const char *name)
 {
     for (unsigned i = 0; i < cfg->sites_count; i++)
     {
@@ -528,4 +441,90 @@ static struct host *find_host_by_name(const struct config *cfg, const char *name
         }
     }
     return NULL;
+}
+
+/**
+ * Finds the IP address of the host running the external Spines daemon
+ * for a given client_id.
+ */
+const char *get_spines_ip_for_client(const struct config *cfg, int client_id, int is_hmi)
+{
+
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+
+        if (site->type != CLIENT)
+            continue;
+
+
+        for (unsigned j = 0; j < site->clients_count; j++)
+        {
+            struct client *c = &site->clients[j];
+
+            if ((is_hmi && c->type &&
+                 (strcmp(c->type, "EMS") == 0 || strcmp(c->type, "PNNL") == 0 || strcmp(c->type, "JHU") == 0)) ||
+                !is_hmi)
+            {
+                if (c->client_id == (unsigned)client_id)
+                {
+
+                    struct host *spines_host = find_host_by_name(cfg, c->spines_external_daemon);
+
+                    if (spines_host != NULL)
+                    {
+                        return spines_host->ip;
+                    }
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * Given a replica instance ID, retrieves the internal and external Spines daemon IPs.
+ * Returns 0 on success, -1 on failure.
+ */
+int get_spines_ips_for_replica(const struct config *cfg, int instance_id,
+                               const char **int_ip_out, const char **ext_ip_out)
+{
+    for (unsigned i = 0; i < cfg->sites_count; i++)
+    {
+        struct site *site = &cfg->sites[i];
+
+        for (unsigned j = 0; j < site->replicas_count; j++)
+        {
+            struct replica *rep = &site->replicas[j];
+            if (rep->instance_id != instance_id)
+                continue;
+
+            if (rep->spines_internal_daemon)
+            {
+                struct host *int_host = find_host_by_name(cfg, rep->spines_internal_daemon);
+                if (!int_host)
+                {
+                    fprintf(stderr, "Internal Spines host not found for replica %d\n", instance_id);
+                    return -1;
+                }
+                *int_ip_out = int_host->ip;
+            }
+            if (rep->spines_external_daemon)
+            {
+                struct host *ext_host = find_host_by_name(cfg, rep->spines_external_daemon);
+                if (!ext_host)
+                {
+                    fprintf(stderr, "External Spines host not found for replica %d\n", instance_id);
+                    return -1;
+                }
+                *ext_ip_out = ext_host->ip;
+            }
+
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "Replica with instance ID %d not found\n", instance_id);
+    return -1;
 }

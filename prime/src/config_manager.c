@@ -15,22 +15,46 @@ static void Print_Usage(void)
 {
     fprintf(stderr,
             "Usage:\n"
-            "  ./config_generator <input_yaml> <output_yaml>\n\n"
+            "  ./config_generator -i <input_yaml> [-o <output_yaml>]\n\n"
             "Arguments:\n"
-            "  input_yaml     Path to input YAML config file\n"
-            "  output_yaml    Path to output signed config file\n");
+            "  -i <input_yaml>      Path to input YAML config file (required)\n"
+            "  -o <output_yaml>     Path to output signed config file (optional)\n"
+            "                       If omitted, defaults to post_configs/<input_basename>\n");
     exit(EXIT_FAILURE);
 }
 
 static void Usage(int argc, char **argv, const char **input_yaml, const char **output_yaml)
 {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <input_yaml> <output_yaml>\n", argv[0]);
-        exit(EXIT_FAILURE);
+    *input_yaml = NULL;
+    *output_yaml = NULL;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-i") == 0 && i + 1 < argc) {
+            *input_yaml = argv[++i];
+        } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            *output_yaml = argv[++i];
+        } else {
+            Print_Usage();
+        }
     }
 
-    *input_yaml = argv[1];
-    *output_yaml = argv[2];
+    if (*input_yaml == NULL) {
+        Print_Usage();
+    }
+
+    // If -o not provided, set default path based on -i basename
+    if (*output_yaml == NULL) {
+        char *input_copy = strdup(*input_yaml);
+        if (!input_copy) {
+            perror("strdup");
+            exit(EXIT_FAILURE);
+        }
+        char *base = basename(input_copy);
+        static char output_path[512];
+        snprintf(output_path, sizeof(output_path), "post_configs/%s", base);
+        *output_yaml = output_path;
+        free(input_copy);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -48,7 +72,7 @@ int main(int argc, char *argv[])
     int status = EXIT_SUCCESS;
 
     // Load and process YAML config
-    struct config *cfg = load_and_process_config(input_path, simulate_tpm);
+    struct config *cfg = load_and_process_config(input_path);
     if (!cfg)
     {
         fprintf(stderr, "Failed to load or process config\n");

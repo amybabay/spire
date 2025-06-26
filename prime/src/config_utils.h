@@ -3,16 +3,15 @@
 
 #include <openssl/evp.h>
 #include "parser.h"
+#include "key_generation.h"
 
-char *read_file_as_string(const char *filepath);
-void generate_all_site_tc_keys(int req_shares, int faults, int rej_servers);
-void load_threshold_pubkeys(struct config *cfg);
-void generate_keys_for_host(struct host *host);
-void generate_keys_for_replica(struct replica *replica, struct host *host, unsigned site_index);
-void generate_keys_for_client(struct client *client, struct host *host);
-void generate_keys(struct config *cfg);
-struct config *load_and_process_config(const char *input_yaml, int simulate_tpm);
+void generate_keys(struct config *cfg); // make static
+struct config *load_and_process_config(const char *input_yaml);
 int load_config_manager_keys(EVP_PKEY **priv_key, EVP_PKEY **pub_key);
 int is_hmi(unsigned client_id, struct config *cfg);
+struct host *find_host_by_name(const struct config *cfg, const char *name);
+int get_spines_ips_for_replica(const struct config *cfg, int instance_id,
+                               const char **int_ip_out, const char **ext_ip_out);
 
+const char *get_spines_ip_for_client(const struct config *cfg, int client_id, int is_hmi);
 #endif // CONFIG_UTILS_H

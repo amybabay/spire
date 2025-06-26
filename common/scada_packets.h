@@ -50,7 +50,7 @@
 #include <stdint.h>
 #include "def.h"
 #include "net_wrapper.h"
-#include "../prime/src/parser.h"
+#include "../prime/src/config_utils.h"
 
 /* Definitions for compatibility with Prime */
 #define UPDATE_SIZE 300

@@ -7,7 +7,7 @@
 
 --- 
 
-1. System initialized with 3 sites: 2 Control Centers (CC1, CC2) and 1 Data Center (DC). Each site runs 6 replicas.
+1. The System is initialized with 3 sites: 2 Control Centers (CC1, CC2) and 1 Data Center (DC). Each site runs 6 replicas.
 
 2. Control Center 2 has failed.
 

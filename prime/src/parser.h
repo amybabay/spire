@@ -102,11 +102,6 @@ struct config *load_yaml_config(const char *yaml_file);
 char *serialize_yaml_config_to_string(const struct config *cfg, size_t *out_len);
 struct config *load_yaml_config_from_string(const char *yaml_str, size_t yaml_len);
 void free_yaml_config(struct config **cfg);
-struct host *find_host_for_replica(struct site *site, const char *host_name);
-int get_spines_ips_for_replica(const struct config *cfg, int instance_id,
-                               const char **int_ip_out, const char **ext_ip_out);
 
-struct host *find_host_by_instance_id(const struct config *cfg, int instance_id);
-const char *get_spines_ip_for_client(const struct config *cfg, int client_id, int is_hmi);
 
 #endif // PARSER_H

@@ -143,7 +143,7 @@ void Init_SM_Replicas(struct config *cfg)
                 continue;
             }
 
-            struct host *host = find_host_for_replica(s, r->spines_internal_daemon);
+            struct host *host = find_host_by_name(cfg, r->spines_internal_daemon);
             if (!host) {
                 // fprintf(stderr, "Error: Could not find host '%s' for replica %d\n", r->spines_internal_daemon, id);
                 continue;

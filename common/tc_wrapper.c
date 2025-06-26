@@ -260,7 +260,7 @@ void TC_Read_Partial_Key_From_Config(int32u instance_id, struct config *cfg, con
                 return;
             }
 
-            struct host *host = find_host_for_replica(site, rep->host);
+            struct host *host = find_host_by_name(cfg, rep->host);
             char full_path[512];
 
             if (!host || !host->permanent_key_location) {
