@@ -71,7 +71,7 @@
 #define MAX_FRAGMENT_SIZE (MAX_SPINES_CLIENT_MSG - 12) // 12 == size of conf_fragment
 
 #define DEFAULT_CONF_ID     1
-#define DEFAULT_SPINES_PORT 8100
+#define DEFAULT_SPINES_PORT 8200
 #define DEFAULT_CONF_FILE   "post_config.yaml"
 
 typedef struct dummy_conf_fragment {

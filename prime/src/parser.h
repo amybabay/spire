@@ -49,6 +49,20 @@ struct replica
     char *unencrypted_sm_threshold_key_share;
 };
 
+struct client
+{
+    unsigned client_id;
+    const char *host;
+    const char *spines_external_daemon;
+    const char *type;
+
+    // Optional future fields
+    const char *instance_public_key;
+    const char *encrypted_instance_private_key;
+
+    char *unencrypted_instance_private_key;
+};
+
 struct site
 {
     const char *name;
@@ -59,6 +73,9 @@ struct site
     // Optional: can be manually managed after parsing
     struct replica *replicas;
     unsigned replicas_count;
+
+    struct client *clients;
+    unsigned clients_count;
 };
 
 struct service_keys
@@ -85,10 +102,6 @@ struct config *load_yaml_config(const char *yaml_file);
 char *serialize_yaml_config_to_string(const struct config *cfg, size_t *out_len);
 struct config *load_yaml_config_from_string(const char *yaml_str, size_t yaml_len);
 void free_yaml_config(struct config **cfg);
-struct host *find_host_for_replica(struct site *site, const char *host_name);
 
-// UNUSED
-// int save_yaml_config(const char *yaml_file, struct config *cfg);
-// int generate_topology(struct config *cfg);
 
 #endif // PARSER_H

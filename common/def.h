@@ -63,7 +63,7 @@
 
 /* Total number of SCADA Master replicas. Note that NUM_SM must be equal to
  * 3*NUM_F + 2*NUM_K + 1 */
-#define NUM_SM           6
+#define NUM_SM           4
 
 /* Maximum number of compromised SCADA Master replicas that can be tolerated
  * simultaneously */
@@ -76,16 +76,16 @@
  * crashed. Note that to tolerate the disconnection of one site, while
  * supporting proactive recovery, NUM_K should be >= the number of replicas in
  * the largest site, plus 1 */
-#define NUM_K            1
+#define NUM_K            0
 
 /* Number of control-center sites */
-#define NUM_CC           6
+#define NUM_CC           4
 
 /* Total number of replicas residing in the control-center sites */
-#define NUM_CC_REPLICA   6
+#define NUM_CC_REPLICA   4
 
 /* Total number of sites (control centers + data centers) */
-#define NUM_SITES        6
+#define NUM_SITES        4
 
 /* Number of PLCs/RTUs in the system */
 #define NUM_RTU          17
@@ -107,29 +107,25 @@
 /* List of IP addresses for Spines daemons on the external Spines network
  * connecting the control center sites with the PLC/RTU proxies and HMIs. We
  * assume there is one Spines daemon per site */
-#define SPINES_EXT_SITE_ADDRS {"192.168.101.101", \
-                               "192.168.101.102", \
-                               "192.168.101.103", \
-                               "192.168.101.104",\
-                               "192.168.101.105",\
-                               "192.168.101.106" }
+#define SPINES_EXT_SITE_ADDRS {"192.168.0.101", \
+                               "192.168.0.102", \
+                               "192.168.0.103", \
+                               "192.168.0.104" }
 
 /* List of IP addresses for Spines daemons on the internal Spines network
  * connecting all the control-center and data-center sites with one another. We
  * assume there is one Spines daemon per site */
-#define SPINES_INT_SITE_ADDRS {"192.168.101.101", \
-                               "192.168.101.102", \
-                               "192.168.101.103", \
-                               "192.168.101.104", \
-                               "192.168.101.105", \
-                               "192.168.101.106" }
+#define SPINES_INT_SITE_ADDRS {"192.168.0.101", \
+                               "192.168.0.102", \
+                               "192.168.0.103", \
+                               "192.168.0.104" }
 
 /* IP address for the Spines daemon that connects with the PLC/RTU proxy or
  * proxies */
-#define SPINES_RTU_ADDR "192.168.101.107"
+#define SPINES_RTU_ADDR "192.168.54.28"
 
 /* IP address for the Spines daemon that connects with the HMI(s) */
-#define SPINES_HMI_ADDR "192.168.101.108"
+#define SPINES_HMI_ADDR "192.168.54.29"
 
 /************************
  *    Spines defines    *
@@ -224,18 +220,18 @@
 #define SS_NUM_K 1
 
 /* IP address of machines running Spines, Subscribers, and Trip Masters */
-#define SPINES_RELAY_INT_ADDRS {"192.168.101.101", \
-                                "192.168.101.102", \
-                                "192.168.101.103", \
-                                "192.168.101.104"}
+#define SPINES_RELAY_INT_ADDRS {"192.168.0.101", \
+                                "192.168.0.102", \
+                                "192.168.0.103", \
+                                "192.168.0.104"}
 
-#define SPINES_RELAY_EXT_ADDRS {"192.168.101.101", \
-                                "192.168.101.102", \
-                                "192.168.101.103", \
-                                "192.168.101.104"}
+#define SPINES_RELAY_EXT_ADDRS {"192.168.0.101", \
+                                "192.168.0.102", \
+                                "192.168.0.103", \
+                                "192.168.0.104"}
 
 /* IP address of destination proxy machine (external spines) connected to Circuit Breaker */
-#define SPINES_PROXY_ADDR "192.168.101.105"
+#define SPINES_PROXY_ADDR "192.168.0.105"
 
 
 /* Interval that discretised timestamps are rounded too, in ms */

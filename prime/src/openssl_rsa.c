@@ -59,7 +59,8 @@
 #include "spu_data_link.h"
 #include "spu_memory.h"
 #include "key_generation.h"
-
+#include "parser.h"
+#include "config_utils.h"
 /* Defined Types */
 // "ripemd160"
 #define RSA_TYPE_PUBLIC 1
@@ -332,129 +333,249 @@ void OPENSSL_RSA_Generate_Keys_with_args(int count, const char *keys_dir)
 	BN_free(e);
 }
 
-/* Read all of the keys for servers or clients. All of the public keys
- * should be read and the private key for this server should be read. */
-void OPENSSL_RSA_Read_Keys(int32u my_instance_id, struct config *cfg)
+void OPENSSL_RSA_Read_Keys(int32u my_id, int32u type, struct config *cfg, const char *key_base_path)
 {
 	EVP_PKEY *tpm_privkey = NULL;
 
+	// fprintf(stderr, "=== BEGIN Loading Public Keys ===\n");
 	for (unsigned i = 0; i < cfg->sites_count; i++)
 	{
 		struct site *site = &cfg->sites[i];
+		// fprintf(stderr, "Processing site: %s\n", site->name);
 
-		// Load all replica public keys
 		for (unsigned r = 0; r < site->replicas_count; r++)
 		{
 			struct replica *rep = &site->replicas[r];
+			// fprintf(stderr, "  Loading public key for replica %u\n", rep->instance_id);
 			if (rep->instance_public_key)
 			{
-				RSA *pub_rsa = load_public_key_from_pem(rep->instance_public_key);
-				if (!pub_rsa)
-					Alarm(EXIT, "Failed to load public key for replica %u\n", rep->instance_id);
-				public_rsa_by_server[rep->instance_id] = pub_rsa;
+				EVP_PKEY *pubkey = load_public_key_from_pem(rep->instance_public_key);
+				if (!pubkey)
+				{
+					fprintf(stderr, "  ERROR: Failed to load public key for replica %u\n", rep->instance_id);
+					exit(EXIT_FAILURE);
+				}
+				public_rsa_by_server[rep->instance_id] = EVP_PKEY_get1_RSA(pubkey);
+				EVP_PKEY_free(pubkey);
 			}
 		}
 
-		// Look for our replica and load private key
-		for (unsigned r = 0; r < site->replicas_count; r++)
+		for (unsigned c = 0; c < site->clients_count; c++)
 		{
-			struct replica *rep = &site->replicas[r];
-			if (rep->instance_id != my_instance_id)
-				continue;
-
-			struct host *host = find_host_for_replica(site, rep->host);
-			if (!host || !host->permanent_key_location)
-				Alarm(EXIT, "Could not find host for replica %d\n", rep->instance_id);
-
-			tpm_privkey = load_key_from_file(host->permanent_key_location, 1);
-			if (!tpm_privkey)
-				Alarm(EXIT, "Failed to load TPM key for replica %d\n", rep->instance_id);
-
-			private_rsa = EVP_PKEY_get1_RSA(
-				load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey));
-
-			// Optional: load client key if present
-			if (rep->encrypted_client_private_key)
-			{
-				private_client_rsa = EVP_PKEY_get1_RSA(
-					load_decrypted_key(rep->encrypted_client_private_key, tpm_privkey));
+			int client_index = NULL;
+			struct client *client = &site->clients[c];
+			if (	(strcmp(client->type, "JHU") == 0 && client->client_id== 1) 	||
+					(strcmp(client->type, "PNNL") == 0 && client->client_id == 2) 	||
+					(strcmp(client->type, "EMS") == 0 && client->client_id == 3)) {
+				client_index = client->client_id + MAX_NUM_SERVER_SLOTS + 100;
+			} else {
+				client_index = client->client_id + MAX_NUM_SERVER_SLOTS;
 			}
+			// fprintf(stderr, "  Loading public key for client %u (type: %s)\n", client->client_id, client->type);
+			if (client->instance_public_key)
+			{
+				EVP_PKEY *pubkey = load_public_key_from_pem(client->instance_public_key);
+				if (!pubkey)
+				{
+					fprintf(stderr, "  ERROR: Failed to load public key for client %u\n", client->client_id);
+					exit(EXIT_FAILURE);
+				}
+				public_rsa_by_client[client_index] = EVP_PKEY_get1_RSA(pubkey);
+				EVP_PKEY_free(pubkey);
+			}
+		}
+	}
 
-			break;
+	// fprintf(stderr, "=== Loading Config Manager Public Key ===\n");
+	char cm_key_path[512];
+	snprintf(cm_key_path, sizeof(cm_key_path), "%s/%s", key_base_path, "cm_keys/public_key.pem");
+	EVP_PKEY *cm_pubkey = load_key_from_file(cm_key_path, 0);
+	if (!cm_pubkey)
+	{
+		fprintf(stderr, "  ERROR: Failed to load config manager public key\n");
+		exit(EXIT_FAILURE);
+	}
+	public_rsa_by_nm = EVP_PKEY_get1_RSA(cm_pubkey);
+	EVP_PKEY_free(cm_pubkey);
+
+	// fprintf(stderr, "=== BEGIN Loading Private Key for This Host (my_id = %u, type = %u) ===\n", my_id, type);
+	if (type == RSA_SERVER)
+	{
+		for (unsigned i = 0; i < cfg->sites_count; i++)
+		{
+			struct site *site = &cfg->sites[i];
+			for (unsigned r = 0; r < site->replicas_count; r++)
+			{
+				struct replica *rep = &site->replicas[r];
+				if (rep->instance_id == my_id)
+				{
+					// fprintf(stderr, "Found matching replica with ID %u\n", my_id);
+					struct host *host = find_host_by_name(cfg, rep->host);
+					if (!host || !host->permanent_key_location)
+					{
+						fprintf(stderr, "  ERROR: Missing TPM key path for host %s\n", rep->host);
+						exit(EXIT_FAILURE);
+					}
+					// fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
+
+					char full_path[512];
+					snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
+					tpm_privkey = load_key_from_file(full_path, 1);
+					if (!tpm_privkey)
+					{
+						fprintf(stderr, "  ERROR: Failed to load TPM private key from %s\n", full_path);
+						exit(EXIT_FAILURE);
+					}
+
+					// fprintf(stderr, "  Decrypting private key for replica...\n");
+					EVP_PKEY *decrypted = load_decrypted_key(rep->encrypted_instance_private_key, tpm_privkey);
+					if (!decrypted)
+					{
+						fprintf(stderr, "  ERROR: Failed to decrypt replica private key\n");
+						exit(EXIT_FAILURE);
+					}
+
+					private_rsa = EVP_PKEY_get1_RSA(decrypted);
+					EVP_PKEY_free(decrypted);
+					break;
+				}
+			}
+		}
+	}
+	else if (type == RSA_CLIENT)
+	{
+		for (unsigned i = 0; i < cfg->sites_count; i++)
+		{
+			struct site *site = &cfg->sites[i];
+			for (unsigned c = 0; c < site->clients_count; c++)
+			{
+				struct client *client = &site->clients[c];
+				int matched = 0;
+
+				if ((strcmp(client->type, "JHU") == 0 && my_id == 1) ||
+					(strcmp(client->type, "PNNL") == 0 && my_id == 2) ||
+					(strcmp(client->type, "EMS") == 0 && my_id == 3))
+				{
+					matched = 1;
+					// fprintf(stderr, "Found HMI client (type: %s) with ID %u\n", client->type, my_id);
+				}
+				else if (client->client_id == my_id)
+				{
+					matched = 1;
+					// fprintf(stderr, "Found benchmark/proxy client with ID %u\n", my_id);
+				}
+
+				if (matched)
+				{
+					struct host *host = find_host_by_name(cfg, client->host);
+					if (!host || !host->permanent_key_location)
+					{
+						fprintf(stderr, "  ERROR: Missing TPM key path for client host %s\n", client->host);
+						exit(EXIT_FAILURE);
+					}
+					// fprintf(stderr, "  TPM key path: %s\n", host->permanent_key_location);
+
+					char full_path[512];
+					snprintf(full_path, sizeof(full_path), "%s/%s", key_base_path, host->permanent_key_location);
+					tpm_privkey = load_key_from_file(full_path, 1);
+					if (!tpm_privkey)
+					{
+						fprintf(stderr, "  ERROR: Failed to load TPM private key from %s\n", full_path);
+						exit(EXIT_FAILURE);
+					}
+
+					// fprintf(stderr, "  Decrypting private key for client...\n");
+					EVP_PKEY *decrypted = load_decrypted_key(client->encrypted_instance_private_key, tpm_privkey);
+					if (!decrypted)
+					{
+						fprintf(stderr, "  ERROR: Failed to decrypt client private key\n");
+						exit(EXIT_FAILURE);
+					}
+
+					private_rsa = EVP_PKEY_get1_RSA(decrypted);
+					EVP_PKEY_free(decrypted);
+					break;
+				}
+			}
 		}
 	}
 
 	if (tpm_privkey)
+	{
+		// fprintf(stderr, "Freeing TPM key\n");
 		EVP_PKEY_free(tpm_privkey);
+	}
+
+	// fprintf(stderr, "=== Done loading keys ===\n");
 }
 
-/* Read all of the keys for servers or clients. All of the public keys
- * should be read and the private key for this server should be read. */
-void OPENSSL_RSA_Read_Keys(int32u my_number, int32u type, const char *dir)
-{
-	int32u s;
-	int32u rt;
+// /* Read all of the keys for servers or clients. All of the public keys
+//  * should be read and the private key for this server should be read. */
+// void OPENSSL_RSA_Read_Keys(int32u my_number, int32u type, const char *dir)
+// {
+// 	int32u s;
+// 	int32u rt;
 
-	// MS2022
-	int32u READ_NUMBER_OF_SERVERS = VAR.Num_Servers;
-	Alarm(DEBUG, "**********MS2022: READ_NUMBER_OF_SERVERS=%u\n", READ_NUMBER_OF_SERVERS);
+// 	// MS2022
+// 	int32u READ_NUMBER_OF_SERVERS = VAR.Num_Servers;
+// 	Alarm(DEBUG, "**********MS2022: READ_NUMBER_OF_SERVERS=%u\n", READ_NUMBER_OF_SERVERS);
 
-	/* Read all public keys for servers */
-	for (s = 1; s <= READ_NUMBER_OF_SERVERS; s++)
-	{
-		public_rsa_by_server[s] = RSA_new();
-		Read_RSA(RSA_TYPE_PUBLIC, s, public_rsa_by_server[s], dir);
-	}
+// 	/* Read all public keys for servers */
+// 	for (s = 1; s <= READ_NUMBER_OF_SERVERS; s++)
+// 	{
+// 		public_rsa_by_server[s] = RSA_new();
+// 		Read_RSA(RSA_TYPE_PUBLIC, s, public_rsa_by_server[s], dir);
+// 	}
 
-	/* Read all public keys for clients. */
-	for (s = 1; s <= NUMBER_OF_CLIENTS; s++)
-	{
-		public_rsa_by_client[s] = RSA_new();
-		Read_RSA(RSA_TYPE_CLIENT_PUBLIC, s, public_rsa_by_client[s], dir);
-	}
+// 	/* Read all public keys for clients. */
+// 	for (s = 1; s <= NUMBER_OF_CLIENTS; s++)
+// 	{
+// 		public_rsa_by_client[s] = RSA_new();
+// 		Read_RSA(RSA_TYPE_CLIENT_PUBLIC, s, public_rsa_by_client[s], dir);
+// 	}
 
-	/* MK Reconf: Read public key for network manager. */
-	public_rsa_by_nm = RSA_new();
-	Read_RSA(RSA_TYPE_NM_PUBLIC, 1, public_rsa_by_nm, dir);
+// 	/* MK Reconf: Read public key for network manager. */
+// 	public_rsa_by_nm = RSA_new();
+// 	Read_RSA(RSA_TYPE_NM_PUBLIC, 1, public_rsa_by_nm, dir);
 
-	if (type == RSA_SERVER)
-	{
-		rt = RSA_TYPE_PRIVATE;
-	}
-	else if (type == RSA_CLIENT)
-	{
-		rt = RSA_TYPE_CLIENT_PRIVATE;
-	}
-	else if (type == RSA_NM)
-	{
-		rt = RSA_TYPE_NM_PRIVATE;
-	}
-	else if (type == RSA_CONFIG_MNGR)
-	{
-		rt = RSA_TYPE_NM_PRIVATE;
-		Alarm(DEBUG, "RSA_TYPE_CONFIG_MNGR_PRIVATE\n");
-	}
-	else if (type == RSA_CONFIG_AGENT)
-	{
-		return;
-	}
-	else
-	{
-		Alarm(EXIT, "OPENSSL_RSA_Read_Keys: Called with invalid type.\n");
-		exit(0); // explicit exit avoids warning about rt being possibly uninitialized below
-	}
+// 	if (type == RSA_SERVER)
+// 	{
+// 		rt = RSA_TYPE_PRIVATE;
+// 	}
+// 	else if (type == RSA_CLIENT)
+// 	{
+// 		rt = RSA_TYPE_CLIENT_PRIVATE;
+// 	}
+// 	else if (type == RSA_NM)
+// 	{
+// 		rt = RSA_TYPE_NM_PRIVATE;
+// 	}
+// 	else if (type == RSA_CONFIG_MNGR)
+// 	{
+// 		rt = RSA_TYPE_NM_PRIVATE;
+// 		Alarm(DEBUG, "RSA_TYPE_CONFIG_MNGR_PRIVATE\n");
+// 	}
+// 	else if (type == RSA_CONFIG_AGENT)
+// 	{
+// 		return;
+// 	}
+// 	else
+// 	{
+// 		Alarm(EXIT, "OPENSSL_RSA_Read_Keys: Called with invalid type.\n");
+// 		exit(0); // explicit exit avoids warning about rt being possibly uninitialized below
+// 	}
 
-	/* Read my private key. */
-	private_rsa = RSA_new();
-	Read_RSA(rt, my_number, private_rsa, dir);
+// 	/* Read my private key. */
+// 	private_rsa = RSA_new();
+// 	Read_RSA(rt, my_number, private_rsa, dir);
 
-	if (type == RSA_SERVER)
-	{
-		rt = RSA_TYPE_CLIENT_PRIVATE;
-		private_client_rsa = RSA_new();
-		Read_RSA(rt, my_number, private_client_rsa, dir);
-	}
-}
+// 	if (type == RSA_SERVER)
+// 	{
+// 		rt = RSA_TYPE_CLIENT_PRIVATE;
+// 		private_client_rsa = RSA_new();
+// 		Read_RSA(rt, my_number, private_client_rsa, dir);
+// 	}
+// }
 
 void OPENSSL_RSA_Init()
 {
@@ -486,81 +607,51 @@ int32u OPENSSL_RSA_Digests_Equal(unsigned char *digest1,
 	return 1;
 }
 
-void OPENSSL_RSA_Init()
-{
-	/* Load a table containing names and digest algorithms. */
-	OpenSSL_add_all_digests();
-
-	/* Use sha1 as the digest algorithm. */
-	message_digest = EVP_get_digestbyname(DIGEST_ALGORITHM);
-	verify_count = 0;
-
-	mdctx = EVP_MD_CTX_new();
-}
-
-int32u OPENSSL_RSA_Digests_Equal(unsigned char *digest1,
-								 unsigned char *digest2)
+void OPENSSL_RSA_Make_Digest(const void *buffer, size_t buffer_size, 
+							 unsigned char *digest_value) 
 {
 
-	int32u i;
-
-#if REMOVE_CRYPTO
-	// return 1;
+    /* EVP functions are a higher level abstraction that encapsulate many
+     * different digest algorithms. We currently use sha1. The returned digest
+     * is for sha1 and therefore we currently assume that functions which use
+     * this type of digest. It would be best to extend the encapsulation
+     * through our code. TODO Note that there may be an increase in
+     * computational cost because these high-level functions are used. We might
+     * want to test this and see if we take a performance hit. */
+    
+    int32u md_len;
+    
+#if REMOVE_CRYPTO 
+    // return;
 #endif
+  
+    // memset(digest_value, 0, DIGEST_SIZE);
+    // return;
 
-	for (i = 0; i < DIGEST_SIZE; i++)
+    sp_time start, end, diff;
+    double elap;
+    start = E_get_time();
+
+    EVP_DigestInit_ex(mdctx, message_digest, NULL);
+    EVP_DigestUpdate(mdctx, buffer, buffer_size);
+    EVP_DigestFinal_ex(mdctx, digest_value, &md_len);
+
+    /* Check to determine if the digest length is expected for sha1. It should
+     * be DIGEST_SIZE bytes, which is 20 */
+   
+    if (md_len != DIGEST_SIZE) 
 	{
-		if (digest1[i] != digest2[i])
-			return 0;
-	}
-	return 1;
-}
+        Alarm(EXIT, "An error occurred while generating a message digest.\n"
+		"The length of the digest was set to %d. It should be %d.\n",
+		 md_len, DIGEST_SIZE);
+    }
 
-void OPENSSL_RSA_Make_Digest(const void *buffer, size_t buffer_size,
-							 unsigned char *digest_value)
-{
-
-	/* EVP functions are a higher level abstraction that encapsulate many
-	 * different digest algorithms. We currently use sha1. The returned digest
-	 * is for sha1 and therefore we currently assume that functions which use
-	 * this type of digest. It would be best to extend the encapsulation
-	 * through our code. TODO Note that there may be an increase in
-	 * computational cost because these high-level functions are used. We might
-	 * want to test this and see if we take a performance hit. */
-
-	int32u md_len;
-
-#if REMOVE_CRYPTO
-	// return;
-#endif
-
-	// memset(digest_value, 0, DIGEST_SIZE);
-	// return;
-
-	sp_time start, end, diff;
-	double elap;
-	start = E_get_time();
-
-	EVP_DigestInit_ex(mdctx, message_digest, NULL);
-	EVP_DigestUpdate(mdctx, buffer, buffer_size);
-	EVP_DigestFinal_ex(mdctx, digest_value, &md_len);
-
-	/* Check to determine if the digest length is expected for sha1. It should
-	 * be DIGEST_SIZE bytes, which is 20 */
-
-	if (md_len != DIGEST_SIZE)
-	{
-		Alarm(EXIT, "An error occurred while generating a message digest.\n"
-					"The length of the digest was set to %d. It should be %d.\n",
-			  md_len, DIGEST_SIZE);
-	}
-
-	end = E_get_time();
-	diff = E_sub_time(end, start);
-	elap = diff.sec + diff.usec / 1000000.0;
-	if (elap >= 0.0015)
-		Alarm(DEBUG, "OPENSSL_Digest: %f sec\n", elap);
-
+    end = E_get_time();
+    diff = E_sub_time(end, start);
+    elap = diff.sec + diff.usec / 1000000.0;
+    if (elap >= 0.0015)
+        Alarm(DEBUG, "OPENSSL_Digest: %f sec\n", elap);
+    
 #if 0 
     printf("Digest is, size %d: ",md_len);
 #endif
@@ -585,7 +676,7 @@ void OPENSSL_RSA_Make_Signature(const byte *digest_value, byte *signature)
 	 * assumed to be DIGEST_SIZE bytes. */
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return;
 #endif
 
@@ -624,7 +715,7 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 	RSA *rsa;
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return 1;
 #endif
 
@@ -637,10 +728,12 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 		{
 			return 0;
 		}
+		// printf("using public public_rsa_by_client index %u", number);
 		rsa = public_rsa_by_client[number];
 	}
 	else if (type == RSA_NM)
 	{
+		// printf("using public public_rsa_by_nm");
 		rsa = public_rsa_by_nm;
 	}
 	else
@@ -649,6 +742,7 @@ int32u OPENSSL_RSA_Verify_Signature(const byte *digest_value,
 		{
 			return 0;
 		}
+		// printf("using public public_rsa_by_server index %u", number);
 		rsa = public_rsa_by_server[number];
 	}
 
@@ -681,7 +775,7 @@ void OPENSSL_RSA_Sign(const unsigned char *message, size_t message_length,
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return;
 #endif
 
@@ -710,7 +804,7 @@ int OPENSSL_RSA_Verify(const unsigned char *message, size_t message_length,
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 
 #if REMOVE_CRYPTO
-	UTIL_Busy_Wait(0.000005);
+	// UTIL_Busy_Wait(0.000005);
 	return 1;
 #endif
 

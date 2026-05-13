@@ -10,7 +10,18 @@
 #include <string.h>
 #include <stdlib.h>
 
-char *hex_encode(const unsigned char *data, size_t len)
+static unsigned char *aes_encrypt_ecb(const unsigned char *plaintext, size_t plaintext_len,
+                               const unsigned char *key, size_t *out_len);
+static unsigned char *aes_decrypt_ecb(const unsigned char *ciphertext, size_t ciphertext_len,
+                                      const unsigned char *key, size_t *out_len);
+static unsigned char *generate_symmetric_key();
+static unsigned char *rsa_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *pubkey, size_t *out_len);
+static unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
+                                  EVP_PKEY *private_key, size_t *out_len);
+static char *hex_encode(const unsigned char *data, size_t len);
+static unsigned char *hex_decode(const char *hexstr, size_t *out_len);
+
+static char *hex_encode(const unsigned char *data, size_t len)
 {
     char *hex = malloc(len * 2 + 1);
     if (!hex)
@@ -24,7 +35,7 @@ char *hex_encode(const unsigned char *data, size_t len)
     return hex;
 }
 
-unsigned char *hex_decode(const char *hexstr, size_t *out_len)
+static unsigned char *hex_decode(const char *hexstr, size_t *out_len)
 {
     if (!hexstr || strlen(hexstr) % 2 != 0)
         return NULL;
@@ -87,8 +98,6 @@ static char *write_key_to_pem(EVP_PKEY *pkey, int is_public, const char *passphr
     return pem;
 }
 
-/* ---------- Key Generation ---------- */
-
 // Generate an RSA key using EVP API
 EVP_PKEY *generate_rsa_key(int bits)
 {
@@ -121,19 +130,6 @@ EVP_PKEY *generate_rsa_key(int bits)
     return pkey;            // Return the generated key
 }
 
-// char *generate_and_get_public_key(int bits)
-// {
-//     EVP_PKEY *key = generate_rsa_key(bits);
-//     if (!key)
-//         return NULL;
-
-//     char *pem = get_public_key(key);
-//     free_rsa_key(key);
-//     return pem;
-// }
-
-/* ---------- Key Serialization ---------- */
-
 char *get_public_key(EVP_PKEY *pkey)
 {
     return write_key_to_pem(pkey, 1, NULL);
@@ -143,11 +139,6 @@ char *get_private_key(EVP_PKEY *pkey)
 {
     return write_key_to_pem(pkey, 0, NULL);
 }
-
-// char *get_encrypted_private_key(EVP_PKEY *pkey, const char *passphrase)
-// {
-//     return write_key_to_pem(pkey, 0, passphrase);
-// }
 
 // Free EVP_PKEY structure
 void free_rsa_key(EVP_PKEY *pkey)
@@ -184,8 +175,6 @@ int write_key_to_file(const char *filename, const char *key)
     fclose(file);
     return 0; // Success
 }
-
-/* ---------- Signing / Verifying ---------- */
 
 Signature sign_buffer(const unsigned char *data, size_t data_len, EVP_PKEY *priv_key)
 {
@@ -251,9 +240,7 @@ int verify_buffer(const unsigned char *data, size_t data_len,
         result = 0;
     }
 
-    if (result == 0)
-        printf("Signature is valid.\n");
-    else
+    if (result != 0)
         printf("Signature is INVALID.\n");
 
     EVP_MD_CTX_free(md_ctx);
@@ -271,10 +258,8 @@ void free_signature(Signature *sig)
     }
 }
 
-/* --- Symmetric Encryption --- */
-
 // Generate a random 256-bit AES key
-unsigned char *generate_symmetric_key()
+static unsigned char *generate_symmetric_key()
 {
     unsigned char *key = malloc(AES_KEYLEN);
     if (!key || RAND_bytes(key, AES_KEYLEN) != 1)
@@ -286,8 +271,8 @@ unsigned char *generate_symmetric_key()
 }
 
 // AES-256-ECB encryption
-unsigned char *aes_encrypt_ecb(const unsigned char *plaintext, size_t plaintext_len,
-                               const unsigned char *key, size_t *out_len)
+static unsigned char *aes_encrypt_ecb(const unsigned char *plaintext, size_t plaintext_len,
+                                      const unsigned char *key, size_t *out_len)
 {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
@@ -327,8 +312,8 @@ error:
 }
 
 // AES-256-ECB decryption
-unsigned char *aes_decrypt_ecb(const unsigned char *ciphertext, size_t ciphertext_len,
-                               const unsigned char *key, size_t *out_len)
+static unsigned char *aes_decrypt_ecb(const unsigned char *ciphertext, size_t ciphertext_len,
+                                      const unsigned char *key, size_t *out_len)
 {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
@@ -366,7 +351,7 @@ error:
 }
 
 // RSA encrypt the AES key
-unsigned char *rsa_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *pubkey, size_t *out_len)
+static unsigned char *rsa_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY *pubkey, size_t *out_len)
 {
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pubkey, NULL);
     if (!ctx)
@@ -404,8 +389,8 @@ unsigned char *rsa_encrypt(const unsigned char *data, size_t data_len, EVP_PKEY 
 }
 
 // RSA decrypt using private key
-unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
-                           EVP_PKEY *private_key, size_t *out_len)
+static unsigned char *rsa_decrypt(const unsigned char *ciphertext, size_t ct_len,
+                                  EVP_PKEY *private_key, size_t *out_len)
 {
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(private_key, NULL);
     if (!ctx)
@@ -549,7 +534,7 @@ EVP_PKEY *load_public_key_from_pem(const char *pem_str)
         return NULL;
     }
 
-    BIO *bio = BIO_new_mem_buf((void *)pem_str, -1); // -1 = null-terminated string
+    BIO *bio = BIO_new_mem_buf((void *)pem_str, -1);
     if (!bio)
     {
         fprintf(stderr, "Error: Failed to create BIO for PEM string.\n");
@@ -559,7 +544,25 @@ EVP_PKEY *load_public_key_from_pem(const char *pem_str)
     EVP_PKEY *pubkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
     if (!pubkey)
     {
-        fprintf(stderr, "Error: Failed to read public key from PEM.\n");
+        // Try as raw RSA public key
+        BIO_free(bio);
+        bio = BIO_new_mem_buf((void *)pem_str, -1);
+        RSA *rsa = PEM_read_bio_RSAPublicKey(bio, NULL, NULL, NULL);
+        if (rsa)
+        {
+            pubkey = EVP_PKEY_new();
+            if (!pubkey || EVP_PKEY_assign_RSA(pubkey, rsa) != 1)
+            {
+                RSA_free(rsa);
+                EVP_PKEY_free(pubkey);
+                pubkey = NULL;
+                fprintf(stderr, "Error: Failed to assign RSA to EVP_PKEY.\n");
+            }
+        }
+        else
+        {
+            fprintf(stderr, "Error: Failed to read key in either PEM format.\n");
+        }
     }
 
     BIO_free(bio);
@@ -575,7 +578,7 @@ EVP_PKEY *load_key_from_file(const char *filepath, int is_private)
     FILE *fp = fopen(filepath, "r");
     if (!fp)
     {
-        perror("Error opening key file");
+        fprintf(stderr, "Error opening key file: %s\n", filepath);
         return NULL;
     }
 
@@ -593,16 +596,19 @@ EVP_PKEY *load_key_from_file(const char *filepath, int is_private)
     return key;
 }
 
-/* Load a hybrid-encrypted PEM RSA key from packed format */
 EVP_PKEY *load_decrypted_key(const char *packed, EVP_PKEY *rsa_privkey)
 {
     if (!packed || !rsa_privkey)
+    {
+        fprintf(stderr, "[ERROR] Missing packed key or TPM private key\n");
         return NULL;
+    }
 
     char *enc_key_hex = NULL, *ciphertext_hex = NULL;
     hybrid_unpack(packed, &enc_key_hex, &ciphertext_hex);
     if (!enc_key_hex || !ciphertext_hex)
     {
+        fprintf(stderr, "[ERROR] Failed to unpack hybrid key format\n");
         free(enc_key_hex);
         free(ciphertext_hex);
         return NULL;
@@ -613,18 +619,28 @@ EVP_PKEY *load_decrypted_key(const char *packed, EVP_PKEY *rsa_privkey)
     free(ciphertext_hex);
 
     if (!dec.plaintext)
+    {
+        fprintf(stderr, "[ERROR] Hybrid decryption failed\n");
+        ERR_print_errors_fp(stderr); // Dump OpenSSL errors
         return NULL;
+    }
 
     BIO *bio = BIO_new_mem_buf(dec.plaintext, (int)dec.length);
     if (!bio)
     {
+        fprintf(stderr, "[ERROR] Failed to create BIO for decrypted key\n");
         free(dec.plaintext);
         return NULL;
     }
 
     EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+    if (!pkey)
+    {
+        fprintf(stderr, "[ERROR] PEM_read_bio_PrivateKey failed\n");
+        ERR_print_errors_fp(stderr); // Again, useful for diagnosing PEM format problems
+    }
+
     BIO_free(bio);
     free(dec.plaintext);
-
     return pkey;
 }

@@ -64,10 +64,11 @@ scada_master/gen_keys
 scada_master/scada_master
 
 prime/bin/driver
-prime/bin/gen_keys
+prime/bin/gen_tpm_keys
 prime/bin/prime
 prime/bin/config_manager
 prime/bin/config_agent
+prime/bin/config_disseminator
 
 spines/daemon/spines
 spines/testprogs/g_flooder
