@@ -10,7 +10,7 @@ networks:
 services:
   spire1:
     image: spire-img
-    build: .
+    pull_policy: never
     container_name: spire1
     networks:
       spire-net:
@@ -21,7 +21,7 @@ services:
 
   spire2:
     image: spire-img
-    build: .
+    pull_policy: never
     container_name: spire2
     networks:
       spire-net:
@@ -32,7 +32,7 @@ services:
 
   spire3:
     image: spire-img
-    build: .
+    pull_policy: never
     container_name: spire3
     networks:
       spire-net:
@@ -43,7 +43,7 @@ services:
 
   spire4:
     image: spire-img
-    build: .
+    pull_policy: never
     container_name: spire4
     networks:
       spire-net:
@@ -54,7 +54,7 @@ services:
 
   benchmark-client:
     image: spire-img
-    build: .
+    pull_policy: never
     profiles:
       - benchmark
     container_name: spire-benchmark
@@ -67,7 +67,7 @@ services:
 
   plc-client:
     image: spire-img
-    build: .
+    pull_policy: never
     profiles:
       - full
     container_name: spire-plc
@@ -80,7 +80,7 @@ services:
 
   hmi-client:
     image: spire-img
-    build: .
+    pull_policy: never
     profiles:
       - full
     container_name: spire-hmi

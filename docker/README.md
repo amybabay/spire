@@ -53,6 +53,13 @@ docker compose --profile full up -d
 Open pvbrower window (on host). You should be able to access HMI GUIs at
 `pv://localhost:5051`, `pv://localhost:5052`, `pv://localhost:5053`
 
+Note: If running pvbrowser in a VM rather than natively on host, you may need
+to adjust your VM network settings. What worked for me in VMWare was using the
+"Host-Only" network adapter, running `ip a` in the VM to get its IP address
+(happened to be 192.168.106.128) and then using the gateway for that network
+(192.168.106.1) as the IP address for pvbrowser to connect to instead of
+localhost.
+
 When done:
 ```
 docker compose --profile full down
@@ -75,11 +82,11 @@ To run it with a specific IP address (e.g. so that the default configuration
 works), you need to create a Docker network and specify the IP address when
 running:
 ```
-docker network create --subnet 192.168.101.0/24 spire_net
+docker network create --subnet 192.168.101.0/24 spire-net
 ```
 
 ```
-docker run -it --net spire_net --ip 192.168.101.101 --name spire spire-img
+docker run -it --net spire-net --ip 192.168.101.101 --name spire spire-img
 ```
 
 ### Interactive benchmarking / functionality checking

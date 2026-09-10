@@ -52,7 +52,7 @@ def main(argv):
 
     # Conditionally launch proxy/plc processes
     if args.type == 'plc':
-        pnnl_cmd = f"cd {base_dir}/plcs/ems{ems_id} && ./openplc -m {502} -d {20000+ems_id}"
+        pnnl_cmd = f"cd {base_dir}/plcs/pnnl_plc && ./openplc -m 502 -d 20000"
         run_cmd(pnnl_cmd, f"plc_pnnl", f"{log_dir}/out_plc_pnnl.txt")
 
         for jhu_id in range(10):
