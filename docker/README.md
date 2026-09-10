@@ -17,12 +17,21 @@ docker build -f docker/Dockerfile -t spire-img .
 ```
 
 If the build command needed to generate the keys, you can copy them to your
-host with the following command (also run from the top-level Spire directory):
+host with the following command (also run from the top-level Spire directory).
+Then, on subsequent builds, you will not need to re-generate the keys:
 ```
 python3 docker/get_keys.py
 ```
 
 ## Benchmarking / Core Functionality Testing
+
+Note: if you only want to build for benchmarking, you can compile only the
+Spire "core" (Spines, Prime, SCADA Master, Benchmark client). Since pvbrowser
+and OpenPLC take a long time to build, this is faster when you do not need to
+run the whole system. For this, do:
+```
+docker build -f docker/Dockerfile --target core -t spire-img .
+```
 
 Run replicas and benchmark container, but don't start benchmark process (run
 from spire/docker directory):
