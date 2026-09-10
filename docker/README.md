@@ -32,3 +32,14 @@ container named "spire" using the built image "spire-img":
 ```
 docker run -it --name spire spire-img
 ```
+
+To run it with a specific IP address (e.g. so that the default configuration
+works), you need to create a Docker network and specify the IP address when
+running:
+```
+docker network create --subnet 192.168.101.0/24 spire_net
+```
+
+```
+docker run -it --net spire_net --ip 192.168.101.101 --name spire spire-img
+```

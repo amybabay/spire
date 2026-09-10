@@ -1,38 +1,51 @@
-import sys, argparse, subprocess, time
+import sys, argparse, subprocess, time, os
+
+base_dir = "/app/spire"
+log_dir = f"{base_dir}/logs"
 
 def get_args(argv):
     parser = argparse.ArgumentParser(description="Run a Spire replica with given ID")
-    parser.add_argument('-id', required=True, type=int)
+    parser.add_argument('-id', required=True, type=int, help='Replica ID (1 to num_replicas)')
+    parser.add_argument('--reconf', '-r', action='store_true', help='Enable reconfiguration support by running the Spines control network and Config Agent')
     return parser.parse_args()
+
+def run_cmd(cmd: str, tag: str, log_file: str) -> subprocess.Popen:
+    """Run shell command, prefixing each line with [tag] before streaming to stdout and log file."""
+    os.makedirs(log_dir, exist_ok=True)
+    # 2>&1 combines stderr with stdout
+    # sed -u prepends the tag instantly without buffering output
+    tee_cmd = f"{cmd} 2>&1 | sed -u 's/^/[{tag}] /' | tee -a {log_file}"
+    return subprocess.Popen(tee_cmd, shell=True)
 
 def main(argv):
     args = get_args(argv)
 
     i = args.id
-    spines_int_f  = open("out_spines_int_{}.txt".format(i), 'a')
-    spines_ext_f  = open("out_spines_ext_{}.txt".format(i), 'a')
-    sm_f          = open("out_sm_{}.txt".format(i), 'a')
-    prime_f       = open("out_prime_{}.txt".format(i), 'a')
-    spines_ctrl_f = open("out_spines_ctrl_{}.txt".format(i), 'a')
-    conf_agent_f  = open("out_conf_agent_{}.txt".format(i), 'a')
+    ip = f"192.168.101.{100 + i}"
 
-    spines_int_cmd  = "cd spines/daemon; ./spines -p 8100 -c spines_int.conf -I 192.168.101.10{}".format(i)
-    spines_ext_cmd  = "cd spines/daemon; ./spines -p 8120 -c spines_ext.conf -I 192.168.101.10{}".format(i)
-    sm_cmd          = "cd scada_master; ./scada_master {} {} 192.168.101.10{}:8100 192.168.101.10{}:8120".format(i,i,i,i)
-    prime_cmd       = "cd prime/bin; ./prime -i {} -g {}".format(i,i)
-    spines_ctrl_cmd = "cd spines/daemon; ./spines -p 8900 -c spines_ctrl.conf"
-    conf_agent_cmd  = "cd prime/bin;./config_agent {} 192.168.101.10{} /tmp/sm_ipc_main s 1 {}".format(i,i,i)
+    # Set up commands for Spire replica processes
+    spines_int_cmd  = f"cd {base_dir}/spines/daemon && ./spines -p 8100 -c spines_int.conf -I {ip}"
+    spines_ext_cmd  = f"cd {base_dir}/spines/daemon && ./spines -p 8120 -c spines_ext.conf -I {ip}"
+    sm_cmd          = f"cd {base_dir}/scada_master && ./scada_master {i} {i} {ip}:8100 {ip}:8120"
+    prime_cmd       = f"cd {base_dir}/prime/bin && ./prime -i {i} -g {i}"
 
-    sp_proc = subprocess.Popen(spines_int_cmd, stdout=spines_int_f, stderr=spines_int_f, shell=True)
-    subprocess.Popen(spines_ext_cmd, stdout=spines_ext_f, stderr=spines_ext_f, shell=True)
-    subprocess.Popen(sm_cmd, stdout=sm_f, stderr=sm_f, shell=True)
-    subprocess.Popen(prime_cmd, stdout=prime_f, stderr=prime_f, shell=True)
-    subprocess.Popen(spines_ctrl_cmd, stdout=spines_ctrl_f, stderr=spines_ctrl_f, shell=True)
-    time.sleep(5)
-    subprocess.Popen(conf_agent_cmd, stdout=conf_agent_f, stderr=conf_agent_f, shell=True)
+    # Run processes
+    sp_proc = run_cmd(spines_int_cmd, f"spines_int_{i}", f"{log_dir}/out_spines_int_{i}.txt")
+    run_cmd(spines_ext_cmd, f"spines_ext_{i}", f"{log_dir}/out_spines_ext_{i}.txt")
+    run_cmd(sm_cmd, f"scada_master_{i}", f"{log_dir}/out_sm_{i}.txt")
+    run_cmd(prime_cmd, f"prime_{i}", f"{log_dir}/out_prime_{i}.txt")
 
-    # Wait for spines process to exit (prevents script from exiting and keeps
-    # container running, as long as spines is running)
+    # Set up and run optional processes to support reconfiguration
+    if args.reconf:
+        spines_ctrl_cmd = f"cd {base_dir}/spines/daemon && ./spines -p 8900 -c spines_ctrl.conf"
+        conf_agent_cmd  = f"cd {base_dir}/prime/bin && ./config_agent {i} {ip} /tmp/sm_ipc_main s 1 {i}"
+
+        run_cmd(spines_ctrl_cmd, f"spines_ctrl_{i}", f"{log_dir}/out_spines_ctrl_{i}.txt")
+        time.sleep(5)
+        run_cmd(conf_agent_cmd, f"conf_agent_{i}", f"{log_dir}/out_conf_agent_{i}.txt")
+
+    # Wait for (internal) spines process to exit (prevents script from exiting
+    # and keeps container running, as long as spines is running)
     sp_proc.communicate()
 
 if __name__ == "__main__":
