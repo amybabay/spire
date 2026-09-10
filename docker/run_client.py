@@ -50,6 +50,32 @@ def main(argv):
     # Launch external spines process
     sp_proc = run_cmd(spines_ext_cmd, f"spines_ext_{args.type}", f"{log_dir}/out_spines_ext_{args.type}.txt")
 
+    # Conditionally launch proxy/plc processes
+    if args.type == 'plc':
+        pnnl_cmd = f"cd {base_dir}/plcs/ems{ems_id} && ./openplc -m {502} -d {20000+ems_id}"
+        run_cmd(pnnl_cmd, f"plc_pnnl", f"{log_dir}/out_plc_pnnl.txt")
+
+        for jhu_id in range(10):
+            jhu_cmd = f"cd {base_dir}/plcs/jhu{jhu_id} && ./openplc -m {503+jhu_id} -d {20001+jhu_id}"
+            run_cmd(jhu_cmd, f"plc_jhu_{jhu_id}", f"{log_dir}/out_plc_jhu_{jhu_id}.txt")
+
+        for ems_id in range(3):
+            ems_cmd = f"cd {base_dir}/plcs/ems{ems_id} && ./openplc -m {513+ems_id} -d {20011+ems_id}"
+            run_cmd(ems_cmd, f"plc_ems_{ems_id}", f"{log_dir}/out_plc_ems_{ems_id}.txt")
+        for ems_id, name in enumerate(["ems_hydro", "ems_solar", "ems_wind"]):
+            ems_cmd = f"cd {base_dir}/plcs/ems{ems_id} && ./openplc -m {516+ems_id} -d {20014+ems_id}"
+            run_cmd(ems_cmd, f"plc_{name}", f"{log_dir}/out_plc_{name}.txt")
+
+        for proxy_id in range(17):
+            proxy_cmd = f"cd {base_dir}/proxy && ./proxy {proxy_id} {ip}:8120 1"
+            run_cmd(proxy_cmd, f"proxy_{proxy_id}", f"{log_dir}/out_proxy_{proxy_id}.txt")
+
+    # Conditionally launch HMI processes
+    if args.type == 'hmi':
+        for hmi_id, name in enumerate(["jhu_hmi", "pnnl_hmi", "ems_hmi"]):
+            hmi_cmd = f"cd hmis/{name} && ./{name} {ip}:8120 -port={5051+hmi_id}"
+            run_cmd(hmi_cmd, f"{name}", f"{log_dir}/out_{name}.txt")
+
     # Conditionally launch reconfiguration processes
     if args.reconf:
         spines_ctrl_cmd = f"cd {base_dir}/spines/daemon && ./spines -p 8900 -c spines_ctrl.conf"

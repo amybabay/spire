@@ -87,6 +87,10 @@ services:
     networks:
       spire-net:
         ipv4_address: 192.168.101.108
+    ports:
+      - "5051:5051"
+      - "5052:5052"
+      - "5053:5053"
     cap_add:
       - NET_ADMIN
     command: python docker/run_client.py --type=hmi

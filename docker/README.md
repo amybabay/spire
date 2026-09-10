@@ -43,6 +43,21 @@ When done:
 docker compose --profile benchmark down
 ```
 
+## Running with PLCs/HMIs
+
+Run all processes (from spire/docker directory):
+```
+docker compose --profile full up -d
+```
+
+Open pvbrower window (on host). You should be able to access HMI GUIs at
+`pv://localhost:5051`, `pv://localhost:5052`, `pv://localhost:5053`
+
+When done:
+```
+docker compose --profile full down
+```
+
 ## Other stuff
 
 ### To run standalone container (debugging)
