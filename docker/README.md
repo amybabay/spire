@@ -22,7 +22,30 @@ host with the following command (also run from the top-level Spire directory):
 python3 docker/get_keys.py
 ```
 
-## To run standalone container (debugging)
+## Benchmarking / Core Functionality Testing
+
+Run replicas and benchmark container, but don't start benchmark process (run
+from spire/docker directory):
+```
+docker compose --profile benchmark up -d
+```
+
+Then, you can open an interactive window on the client and start benchmarks (-n
+parameter controls the number of clients to start, can use -u to control the
+number of updates per client):
+```
+docker exec -it spire-benchmark bash
+python docker/run_benchmark.py -n 1
+```
+
+When done:
+```
+docker compose --profile benchmark down
+```
+
+## Other stuff
+
+### To run standalone container (debugging)
 
 This can be useful for debugging build process (e.g., comment out `make`
 commands in Dockerfile, and build interactively in container).
@@ -44,26 +67,10 @@ docker network create --subnet 192.168.101.0/24 spire_net
 docker run -it --net spire_net --ip 192.168.101.101 --name spire spire-img
 ```
 
-## To run full system (normal case)
-
-### Benchmarking
-
-Run replicas and benchmark container, but don't start benchmark process:
-```
-docker compose --profile benchmark up -d
-```
-
-Then, you can open an interactive window on the client and start benchmarks (-n
-parameter controls the number of clients to start, can use -u to control the
-number of updates per client):
-```
-docker exec -it spire-benchmark bash
-python docker/run_benchmark.py -n 1
-```
-
 ### Interactive benchmarking / functionality checking
 
-This is just giving some more manual options to accomplish the same as above.
+This is just giving some more manual options to accomplish the same as in the
+main benchmarking instructions.
 
 Run replicas only (from `spire/docker` directory):
 ```
