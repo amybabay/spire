@@ -32,6 +32,7 @@ def main(argv):
     # Run processes
     sp_proc = run_cmd(spines_int_cmd, f"spines_int_{i}", f"{log_dir}/out_spines_int_{i}.txt")
     run_cmd(spines_ext_cmd, f"spines_ext_{i}", f"{log_dir}/out_spines_ext_{i}.txt")
+    time.sleep(5)
     run_cmd(sm_cmd, f"scada_master_{i}", f"{log_dir}/out_sm_{i}.txt")
     run_cmd(prime_cmd, f"prime_{i}", f"{log_dir}/out_prime_{i}.txt")
 
