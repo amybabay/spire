@@ -63,7 +63,7 @@ def main(argv):
             ems_cmd = f"cd {base_dir}/plcs/ems{ems_id} && ./openplc -m {513+ems_id} -d {20011+ems_id}"
             run_cmd(ems_cmd, f"plc_ems_{ems_id}", f"{log_dir}/out_plc_ems_{ems_id}.txt")
         for ems_id, name in enumerate(["ems_hydro", "ems_solar", "ems_wind"]):
-            ems_cmd = f"cd {base_dir}/plcs/ems{ems_id} && ./openplc -m {516+ems_id} -d {20014+ems_id}"
+            ems_cmd = f"cd {base_dir}/plcs/{name} && ./openplc -m {516+ems_id} -d {20014+ems_id}"
             run_cmd(ems_cmd, f"plc_{name}", f"{log_dir}/out_plc_{name}.txt")
 
         for proxy_id in range(17):
