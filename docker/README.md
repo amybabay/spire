@@ -89,6 +89,12 @@ docker network create --subnet 192.168.101.0/24 spire-net
 docker run -it --net spire-net --ip 192.168.101.101 --name spire spire-img
 ```
 
+And to publish a port (e.g. for the HMI so that you can connect a pvbrowser
+instance running on the host to port 5052 in this example):
+```
+docker run -it --net spire-net --ip 192.168.101.108 -p 5052:5052 --name spire-hmi spire-img
+```
+
 ### Interactive benchmarking / functionality checking
 
 This is just giving some more manual options to accomplish the same as in the
