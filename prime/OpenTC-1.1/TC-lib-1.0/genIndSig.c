@@ -30,6 +30,7 @@
 
  
 #include "TC.h"
+#include "TC_private.h"
 
 /* Proof of correctness:
    c = H'(v,xt,vi,xi^2,v^z*vi^-c,xt^z*xi^-2c)*/

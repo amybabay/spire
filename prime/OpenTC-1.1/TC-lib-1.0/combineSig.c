@@ -34,6 +34,7 @@
  * allowing this use of void */
 
 #include "TC.h"
+#include "TC_private.h"
 
 static int lambda(BIGNUM *answer, int i, int j, int *Set_S, BIGNUM *delta, BIGNUM *temp, BIGNUM *temp2, BIGNUM *temp3,BN_CTX *ctx) {
   int count;
