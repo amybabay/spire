@@ -5,6 +5,7 @@ log_dir = f"{base_dir}/logs"
 
 def get_args(argv):
     parser = argparse.ArgumentParser(description="Run a Spire client")
+    parser.add_argument('-ip', required=False, type=str, help='Client IP (default: 192.168.101.{100+ID})')
     parser.add_argument(
         '--type', '-t',
         choices=['benchmark', 'plc', 'hmi'],
@@ -29,20 +30,23 @@ def main(argv):
 
     # Determine IPC path and application count based on client type
     if args.type == 'plc':
-        i = 7 # assume plc/benchmark is always ID 7, running on 192.168.101.107
+        i = 7 # assume plc/benchmark is always ID 7, default ip 192.168.101.107
         num_apps = 10
         ipc_path = "/tmp/rtu_ipc_main"
     elif args.type == 'hmi':
-        i = 8 # assume hmi is always ID 8, running on 192.168.101.108
+        i = 8 # assume hmi is always ID 8, default ip 192.168.101.108
         num_apps = 3
         ipc_path = "/tmp/hmi_ipc_main"
     else: #benchmark
-        i = 7 # assume plc/benchmark is always ID 7, running on 192.168.101.107
+        i = 7 # assume plc/benchmark is always ID 7, default ip 192.168.101.107
         num_apps = 10
         ipc_path = "/tmp/bm_ipc_main"
         args.type = "benchmark"
 
-    ip = f"192.168.101.{100 + i}"
+    if args.ip:
+        ip = args.ip
+    else:
+        ip = f"192.168.101.{100 + i}"
 
     # Command definitions
     spines_ext_cmd = f"cd {base_dir}/spines/daemon && ./spines -p 8120 -c spines_ext.conf -I {ip}"

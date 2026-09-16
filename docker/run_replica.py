@@ -6,11 +6,13 @@ log_dir = f"{base_dir}/logs"
 def get_args(argv):
     parser = argparse.ArgumentParser(description="Run a Spire replica with given ID")
     parser.add_argument('-id', required=True, type=int, help='Replica ID (1 to num_replicas)')
+    parser.add_argument('-ip', required=False, type=str, help='Replica IP (default: 192.168.101.{100+ID})')
     parser.add_argument('--reconf', '-r', action='store_true', help='Enable reconfiguration support by running the Spines control network and Config Agent')
     return parser.parse_args()
 
 def run_cmd(cmd: str, tag: str, log_file: str) -> subprocess.Popen:
     """Run shell command, prefixing each line with [tag] before streaming to stdout and log file."""
+    print(cmd)
     os.makedirs(log_dir, exist_ok=True)
     # 2>&1 combines stderr with stdout
     # sed -u prepends the tag instantly without buffering output
@@ -21,7 +23,10 @@ def main(argv):
     args = get_args(argv)
 
     i = args.id
-    ip = f"192.168.101.{100 + i}"
+    if args.ip:
+        ip = args.ip
+    else:
+        ip = f"192.168.101.{100 + i}"
 
     # Set up commands for Spire replica processes
     spines_int_cmd  = f"cd {base_dir}/spines/daemon && ./spines -p 8100 -c spines_int.conf -I {ip}"
@@ -38,7 +43,7 @@ def main(argv):
 
     # Set up and run optional processes to support reconfiguration
     if args.reconf:
-        spines_ctrl_cmd = f"cd {base_dir}/spines/daemon && ./spines -p 8900 -c spines_ctrl.conf"
+        spines_ctrl_cmd = f"cd {base_dir}/spines/daemon && ./spines -p 8900 -c spines_ctrl.conf -I {ip}"
         conf_agent_cmd  = f"cd {base_dir}/prime/bin && ./config_agent {i} {ip} /tmp/sm_ipc_main s 1 {i}"
 
         run_cmd(spines_ctrl_cmd, f"spines_ctrl_{i}", f"{log_dir}/out_spines_ctrl_{i}.txt")
