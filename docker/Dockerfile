@@ -1,4 +1,5 @@
 FROM almalinux:9 AS base
+#FROM almalinux:latest AS base
 
 # Install basic packages
 RUN dnf install -y vim make gcc g++ iproute-tc
@@ -13,8 +14,16 @@ RUN dnf install -y gdb valgrind
 COPY . /app/spire
 WORKDIR /app/spire
 
-# Set up config files
-RUN cd example_conf; ./install_conf.sh conf_4 
+# Define configuration directory build argument (default: example_conf/conf_4)
+ARG CONF_DIR=example_conf/conf_4
+
+# Copy custom config into example_conf if located elsewhere, then run install script
+RUN CONF_NAME=$(basename "$CONF_DIR") && \
+    if [ "$CONF_DIR" != "example_conf/$CONF_NAME" ]; then \
+        cp -r "$CONF_DIR" "example_conf/$CONF_NAME"; \
+    fi && \
+    cd example_conf && \
+    ./install_conf.sh "$CONF_NAME"
 
 # ===== Build Spire core ONLY ====
 FROM base AS core
