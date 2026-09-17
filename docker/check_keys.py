@@ -16,7 +16,9 @@ KEY_CONFIGS = {
         "prebuilt": f"{PREBUILT_DIR}/scada",
         "actual": "/app/spire/scada_master/sm_keys",
         "gen_cmd": "cd /app/spire/scada_master && ./gen_keys",
-        "check_fn": lambda p: os.path.exists(p) and bool(os.listdir(p)),
+        "check_fn": lambda p: os.path.exists(p) and any(
+            f.startswith("share") or f.startswith("pubkey_") for f in os.listdir(p)
+        ),
         "copy_src": "/app/spire/scada_master/sm_keys",
     },
     "prime_rsa": {
