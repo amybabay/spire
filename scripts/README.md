@@ -19,6 +19,22 @@ generating its own files. Currently, if you change those file formats in Spire,
 you also need to update the base files (possible TODO: make it work directly
 off of Spire's default configs in the existing directory structure).
 
+To use your generated config with Docker, you could then run (from the top-level spire directory):
+
+```
+docker build --build-arg CONF_DIR=scripts/conf/<specific_conf_dir> -t spire-img .
+```
+
+and to bring up the config:
+```
+docker compose -f scripts/conf/<specific_conf_dir>/docker-compose.yml --profile full up -d
+```
+
+and take it down:
+```
+docker compose -f scripts/conf/<specific_conf_dir>/docker-compose.yml --profile full down
+```
+
 ## Examples
 
 Example JSON configurations for 4 and 6 replicas are provided in
